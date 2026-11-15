@@ -19,8 +19,8 @@ Wibu Gallery adalah galeri foto anime publik dengan tampilan mobile-first bergay
 1. Buat project Supabase.
 2. Buka SQL Editor dan jalankan seluruh isi `supabase.sql`.
    - Jika database versi sebelumnya sudah dipakai, backup dahulu. Script memakai `IF NOT EXISTS` dan menambahkan tabel interaksi serta kolom bio.
-3. Salin `config.example.js` menjadi `config.js`.
-4. Isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY` dari Supabase Project Settings → API.
+3. Buka `config.js` (file ini sudah disertakan) dan isi `SUPABASE_URL` serta `SUPABASE_ANON_KEY` dari Supabase Project Settings → API.
+4. Pastikan `config.js` ikut di-commit / di-upload ke GitHub Pages. File ini sengaja tidak diabaikan oleh `.gitignore`; Supabase anon/publishable key memang digunakan di frontend dan wajib dilindungi dengan RLS.
 5. Jangan pernah menaruh `service_role` key di frontend.
 6. Deploy seluruh file ke hosting static seperti Netlify atau Vercel.
 
