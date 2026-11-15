@@ -36,3 +36,9 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 - Login dibutuhkan untuk upload, Like, Simpan, komentar, dan membuat album.
 - Simpan hanya membuat bookmark di akun Wibu Gallery. Download adalah tindakan terpisah.
 - Jumlah foto tidak dibatasi oleh aplikasi, tetapi tetap mengikuti kuota Storage dan bandwidth paket Supabase.
+
+
+## Catatan login dan akses publik
+- Setiap kali halaman dimuat ulang/dibuka kembali, aplikasi menampilkan halaman Masuk terlebih dahulu. Sesi tidak dipulihkan otomatis antar kunjungan.
+- Pengunjung tetap dapat menekan “Jelajahi tanpa login” untuk melihat galeri publik.
+- Jalankan ulang seluruh `supabase.sql` agar hak akses tabel (GRANT) dan RLS diterapkan. Ini memperbaiki error `permission denied for table wallpapers` bila penyebabnya hak akses tabel belum diberikan.

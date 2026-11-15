@@ -209,3 +209,17 @@ drop policy if exists "reports insert own" on public.reports;
 create policy "reports insert own" on public.reports for insert to authenticated with check(user_id=auth.uid());
 drop policy if exists "reports owner read" on public.reports;
 create policy "reports owner read" on public.reports for select to authenticated using(public.is_gallery_owner());
+
+
+-- Explicit table privileges. RLS policies above still control which rows each role can access.
+grant usage on schema public to anon, authenticated;
+grant select on public.profiles, public.wallpapers, public.collections, public.collection_items, public.comments to anon, authenticated;
+grant select, insert, update, delete on public.favorites to authenticated;
+grant insert, delete on public.wallpapers to authenticated;
+grant update on public.wallpapers to authenticated;
+grant insert, update, delete on public.collections to authenticated;
+grant insert, delete on public.collection_items to authenticated;
+grant select, insert, delete on public.saved_items, public.likes to authenticated;
+grant insert, delete on public.comments to authenticated;
+grant insert, select on public.reports to authenticated;
+grant update(display_name, bio) on public.profiles to authenticated;
