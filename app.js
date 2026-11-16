@@ -2,7 +2,12 @@ const cfg=window.WIBU_CONFIG||{};
 const configured=cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&!cfg.SUPABASE_URL.includes('YOUR_')&&!cfg.SUPABASE_ANON_KEY.includes('YOUR_');
 const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profileView=null,items=[],saved=new Set(),liked=new Set(),current=null,authMode='login',profileTab='saved',collections=[],selectedAvatarFile=null,removeAvatarRequested=false;
 const bucket='wallpapers';const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const url=w=>sb.storage.from(bucket).getPublicUrl(w.storage_path).data.publicUrl;const avatarUrl=path=>path?sb.storage.from('profile-avatars').getPublicUrl(path).data.publicUrl:null;const isOwner=()=>profile?.role==='owner';
+const url=w=>{
+  if(!w?.storage_path)return '';
+  const base=String(cfg.SUPABASE_URL||'').replace(/\/+$/,'');
+  const safePath=String(w.storage_path).split('/').map(part=>encodeURIComponent(part)).join('/');
+  return `${base}/storage/v1/object/public/${bucket}/${safePath}`;
+};const avatarUrl=path=>path?sb.storage.from('profile-avatars').getPublicUrl(path).data.publicUrl:null;const isOwner=()=>profile?.role==='owner';
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
 function showApp(){$('appView').classList.remove('hidden');const g=$('startupGate');if(g)g.classList.add('hidden')}
 function openAuth(){location.href='login.html'}
@@ -21,7 +26,15 @@ async function enter(u){
 }
 async function loadPersonal(){saved.clear();liked.clear();if(!user)return;const [s,l]=await Promise.all([sb.from('saved_items').select('wallpaper_id').eq('user_id',user.id),sb.from('likes').select('wallpaper_id').eq('user_id',user.id)]);(s.data||[]).forEach(x=>saved.add(x.wallpaper_id));(l.data||[]).forEach(x=>liked.add(x.wallpaper_id))}
 async function loadGallery(){const r=await sb.from('wallpapers').select('id,user_id,title,character_name,anime_title,description,storage_path,created_at').order('created_at',{ascending:false});if(r.error){toast(r.error.message);return}const p=await sb.from('profiles').select('id,display_name,avatar_path');const people=new Map((p.data||[]).map(x=>[x.id,x]));items=(r.data||[]).map(x=>({...x,member_name:people.get(x.user_id)?.display_name||'Member',member_avatar_path:people.get(x.user_id)?.avatar_path||null}));$('feedCount').textContent=`${items.length} karya`;renderFeed();renderProfile();renderStorage();if(current)refreshDetail()}
-function card(w){const image=url(w);return `<article class="pin-card" data-open="${w.id}"><img loading="lazy" src="${image}" alt="${esc(w.title)}"><div class="pin-overlay"><span class="pin-title">${esc(w.title)}</span><button class="pin-save" data-save="${w.id}">${saved.has(w.id)?'Tersimpan':'Simpan'}</button></div><div class="pin-credit">${esc(w.member_name)}</div></article>`}
+function card(w){
+ const image=esc(url(w));
+ return `<article class="pin-card" data-open="${w.id}">
+   <img loading="lazy" decoding="async" src="${image}" alt="${esc(w.title)}"
+     onerror="this.classList.add('image-load-failed');this.alt='Gambar gagal dimuat';this.insertAdjacentHTML('afterend','<span class=&quot;image-error-label&quot;>Gambar tidak dapat dimuat</span>')">
+   <div class="pin-overlay"><span class="pin-title">${esc(w.title)}</span><button class="pin-save" data-save="${w.id}">${saved.has(w.id)?'Tersimpan':'Simpan'}</button></div>
+   <div class="pin-credit">${esc(w.member_name)}</div>
+ </article>`;
+}
 function renderGrid(id,list){const el=$(id);if(!el)return;el.innerHTML=list.length?list.map(card).join(''):'<div class="empty">Belum ada foto di sini.</div>';el.querySelectorAll('[data-open]').forEach(x=>x.onclick=e=>{if(!e.target.closest('[data-save]'))openDetail(x.dataset.open)});el.querySelectorAll('[data-save]').forEach(x=>x.onclick=e=>{e.stopPropagation();toggleSaved(x.dataset.save)})}
 function renderFeed(){renderGrid('feedGrid',items);const q=$('searchInput')?.value?.toLowerCase().trim()||'';if($('searchGrid'))renderGrid('searchGrid',q?items.filter(w=>[w.title,w.anime_title,w.character_name,w.member_name].join(' ').toLowerCase().includes(q)):[])}
 function renderStorage(){

@@ -25,3 +25,8 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .bottom-nav{justify-content:space-between;padding-left:10px;padding-right:10px}
 .bottom-item{min-width:0;flex:1}
 .bottom-add{flex:0 0 49px}
+
+/* Clear feedback when a stored image URL cannot be loaded */
+.pin-card{position:relative}
+.pin-card img.image-load-failed{opacity:0;min-height:180px}
+.image-error-label{position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;color:#b7a9c8;font-size:12px;background:linear-gradient(145deg,#19151f,#101014);pointer-events:none}
