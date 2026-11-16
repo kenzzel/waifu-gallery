@@ -1,4 +1,4 @@
-// Konfigurasi Supabase Wibu Gallery
+// Konfigurasi Supabase Waifu Gallery
 // URL project sudah diisi dari screenshot. Masukkan anon/publishable key milik project lu di bawah.
 // Jangan pernah memasukkan service_role key ke frontend.
 window.WIBU_CONFIG = {

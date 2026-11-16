@@ -1,11 +1,11 @@
-# Wibu Gallery
+# Waifu Gallery
 
-Wibu Gallery adalah galeri foto anime publik dengan tampilan mobile-first bergaya masonry yang terinspirasi dari pengalaman discovery visual, tetapi memakai identitas visual sendiri: hitam, ungu, dan silver.
+Waifu Gallery adalah galeri foto anime publik dengan tampilan mobile-first bergaya masonry yang terinspirasi dari pengalaman discovery visual, tetapi memakai identitas visual sendiri: hitam, ungu, dan silver.
 
 ## Fitur
 - Beranda publik: semua foto member tampil dalam masonry 2 kolom di ponsel.
 - Detail foto: Suka, Komentar, Bagikan, Simpan, menu tambahan, dan Download.
-- Simpan: menyimpan foto ke tab **Disimpan** di profil Wibu Gallery, bukan ke galeri HP.
+- Simpan: menyimpan foto ke tab **Disimpan** di profil Waifu Gallery, bukan ke galeri HP.
 - Suka: masuk ke tab **Disukai**. Like dan Simpan merupakan dua tindakan terpisah.
 - Download: mengunduh file gambar ke perangkat hanya ketika dipilih.
 - Profil member: header sederhana dan hanya tiga tab — Disimpan, Disukai, Koleksi (foto yang diunggah sendiri).
@@ -34,7 +34,7 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 ## Catatan
 - Semua orang dapat melihat foto yang diunggah ke bucket publik.
 - Login dibutuhkan untuk upload, Like, Simpan, komentar, dan membuat album.
-- Simpan hanya membuat bookmark di akun Wibu Gallery. Download adalah tindakan terpisah.
+- Simpan hanya membuat bookmark di akun Waifu Gallery. Download adalah tindakan terpisah.
 - Jumlah foto tidak dibatasi oleh aplikasi, tetapi tetap mengikuti kuota Storage dan bandwidth paket Supabase.
 
 
@@ -47,7 +47,7 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 ## Pemisahan halaman login dan aplikasi
 
 - `login.html` adalah halaman khusus Masuk/Daftar.
-- `index.html` adalah halaman aplikasi Wibu Gallery.
+- `index.html` adalah halaman aplikasi Waifu Gallery.
 - `login.js` menangani autentikasi dan menyimpan sesi Supabase di localStorage.
 - `app.js` memeriksa sesi sebelum menampilkan aplikasi. Jika belum login dan bukan mode jelajah tamu, pengunjung diarahkan ke `login.html`.
 - Setelah login, refresh atau membuka kembali browser akan memulihkan sesi. Tombol Keluar menghapus sesi dan kembali ke `login.html`.

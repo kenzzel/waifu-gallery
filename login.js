@@ -5,7 +5,7 @@ let sb=null,mode='login';
 function setMode(next){
   mode=next;
   const register=mode==='register';
-  $('authTitle').textContent=register?'Buat akun Wibu Gallery':'Masuk ke Wibu Gallery';
+  $('authTitle').textContent=register?'Buat akun Waifu Gallery':'Masuk ke Waifu Gallery';
   $('nameWrap').classList.toggle('hidden',!register);
   $('displayName').required=register;
   $('authSubmit').textContent=register?'Daftar':'Masuk';
