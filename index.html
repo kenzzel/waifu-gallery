@@ -8,13 +8,6 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body class="wg-app">
-<div id="authView" class="auth-screen">
-  <div class="auth-art"><span class="eyebrow">ANIME ART COMMUNITY</span><h1>Wibu<br><em>Gallery</em></h1><p>Temukan dan bagikan karya favoritmu.</p></div>
-  <div class="auth-panel"><div class="brand-mark">WG<span>✦</span></div><div class="eyebrow">WELCOME BACK</div><h2 id="authTitle">Masuk ke Wibu Gallery</h2>
-    <form id="authForm" class="stack"><label id="nameWrap" class="hidden">Nama tampilan<input id="displayName" placeholder="Nama kamu"></label><label>Email<input id="email" type="email" required placeholder="nama@email.com"></label><label>Password<input id="password" type="password" minlength="6" required placeholder="Minimal 6 karakter"></label><button class="btn primary full" id="authSubmit">Masuk</button></form>
-    <p class="auth-switch"><span id="switchText">Belum punya akun?</span> <button class="text-btn" id="switchAuth">Daftar</button></p><p class="tiny muted" id="authMessage">Masuk untuk menyukai, menyimpan, dan mengunggah foto.</p><button class="btn secondary full" id="browseBtn">Jelajahi tanpa login</button>
-  </div>
-</div>
 <div id="appView" class="wg-shell hidden">
   <header class="wg-header"><a class="wg-wordmark" href="#"><span class="wg-symbol">W✦</span><span>Wibu Gallery</span></a><div class="wg-head-actions"><button id="searchOpen" class="icon-btn" aria-label="Cari">⌕</button><button id="headerAdd" class="icon-btn accent" aria-label="Tambah">＋</button></div></header>
   <main id="homeScreen" class="wg-screen"><div class="wg-feed-head"><div><span class="eyebrow">DISCOVER ART</span><h1>Temukan inspirasi.</h1></div><span class="feed-count" id="feedCount"></span></div><div id="feedGrid" class="masonry-grid"></div></main>

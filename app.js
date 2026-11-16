@@ -6,7 +6,7 @@ const url=w=>sb.storage.from(bucket).getPublicUrl(w.storage_path).data.publicUrl
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
 function showAuth(){$('authView').classList.remove('hidden');$('appView').classList.add('hidden')}
 function showApp(){$('authView').classList.add('hidden');$('appView').classList.remove('hidden')}
-function openAuth(){authModeSet('login');showAuth();$('authMessage').textContent='Masuk untuk menyukai, menyimpan, dan mengunggah foto.'}
+function openAuth(){location.href='login.html'}
 function authModeSet(m){authMode=m;const reg=m==='register';$('authTitle').textContent=reg?'Buat akun Wibu Gallery':'Masuk ke Wibu Gallery';$('nameWrap').classList.toggle('hidden',!reg);$('displayName').required=reg;$('authSubmit').textContent=reg?'Daftar':'Masuk';$('switchText').textContent=reg?'Sudah punya akun?':'Belum punya akun?';$('switchAuth').textContent=reg?'Masuk':'Daftar'}
 async function authSubmit(e){e.preventDefault();const email=$('email').value.trim(),password=$('password').value;const r=authMode==='register'?await sb.auth.signUp({email,password,options:{data:{display_name:$('displayName').value.trim()}}}):await sb.auth.signInWithPassword({email,password});if(r.error)return $('authMessage').textContent=r.error.message;if(authMode==='register'&&!r.data.session){$('authMessage').textContent='Akun dibuat. Verifikasi email jika diminta, lalu masuk.';return}try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await enter(r.data.user)}
 async function enter(u){if(!u)return;user=u;let p=await sb.from('profiles').select('*').eq('id',u.id).single();profile=p.data||{display_name:u.email,role:'member',bio:''};await loadPersonal();showApp();await loadGallery();goScreen('home')}
@@ -57,51 +57,47 @@ async function saveProfile(){const display_name=$('editName').value.trim();if(!d
 function closeOverlay(id){$(id).classList.add('hidden')}
 function bind(){
 $('authForm').onsubmit=authSubmit;$('switchAuth').onclick=()=>authModeSet(authMode==='login'?'register':'login');$('browseBtn').onclick=async()=>{try{localStorage.setItem('wibu_guest_mode','1')}catch(e){}showApp();await loadGallery();goScreen('home')};
-$('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();user=null;profile=null;profileView=null;saved.clear();liked.clear();showAuth();authModeSet('login')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
+$('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();location.replace('login.html')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
 $('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('quickPhotoInput').onchange=handleQuickPhoto;$('collageInput').onchange=handleCollage;$('saveCollection').onclick=saveCollection;
 $('detailBack').onclick=()=>{$('detailView').classList.add('hidden');document.body.style.overflow=''};$('detailOwner').onclick=()=>openMemberProfile(current.user_id);$('likeBtn').onclick=toggleLike;$('saveBtn').onclick=()=>toggleSaved(current.id);$('commentOpen').onclick=openComments;$('shareBtn').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{if(navigator.share)await navigator.share({title:current.title,url:link});else{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}}catch(e){}};$('detailMore').onclick=()=>{$('moreSheet').classList.remove('hidden')};$('downloadImage').onclick=downloadCurrent;$('copyLink').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}catch(e){toast(link)}closeOverlay('moreSheet')};$('moreFollow').onclick=()=>openMemberProfile(current.user_id);$('addToCollection').onclick=()=>{closeOverlay('moreSheet');openCollection()};$('reportPhoto').onclick=async()=>{if(!user){toast('Masuk dulu untuk melaporkan foto.');return openAuth()}const reason=prompt('Alasan laporan foto ini:');if(!reason?.trim())return;const r=await sb.from('reports').insert({wallpaper_id:current.id,user_id:user.id,reason:reason.trim().slice(0,300)});if(r.error)return toast(r.error.message);toast('Laporan berhasil dikirim.');closeOverlay('moreSheet')};$('deletePhoto').onclick=deleteCurrent;
 $('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)return openAuth();selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editName').value=profile.display_name||'';$('editBio').value=profile.bio||'';previewAvatar(null);$('editModal').classList.remove('hidden')};$('avatarInput').onchange=()=>{const f=$('avatarInput').files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){$('avatarInput').value='';return toast('Gunakan foto JPG, PNG, atau WEBP.')}if(f.size>5*1024*1024){$('avatarInput').value='';return toast('Ukuran foto profil maksimal 5 MB.')}selectedAvatarFile=f;removeAvatarRequested=false;previewAvatar(f)};$('removeAvatar').onclick=()=>{selectedAvatarFile=null;$('avatarInput').value='';removeAvatarRequested=true;previewAvatar(null)};$('saveProfile').onclick=saveProfile;
 document.querySelectorAll('[data-dismiss]').forEach(b=>b.onclick=()=>{const m={plus:'plusMenu',more:'moreSheet',comments:'commentsView',collection:'collectionModal',edit:'editModal'}[b.dataset.dismiss];closeOverlay(m)});
 }
 async function init(){
- bind();
- authModeSet('login');
- if(!configured){
-   showAuth();
-   $('authMessage').textContent='Isi config.js dengan Supabase URL dan anon/publishable key terlebih dahulu.';
-   return;
- }
- // Supabase menyimpan sesi di localStorage browser agar login tetap aktif setelah refresh.
- sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
-   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
- });
- showAuth();
- // Pulihkan sesi yang sudah ada sebelum memutuskan menampilkan halaman login.
- const {data,error}=await sb.auth.getSession();
- if(error){
-   $('authMessage').textContent='Gagal memeriksa sesi: '+error.message;
-   return;
- }
- if(data?.session?.user){
-   try{localStorage.removeItem('wibu_guest_mode')}catch(e){}
-   await enter(data.session.user);
- }else{
-   let guest=false;
-   try{guest=localStorage.getItem('wibu_guest_mode')==='1'}catch(e){}
-   if(guest){
-     showApp();
-     await loadGallery();
-     goScreen('home');
-   }else{
-     user=null;profile=null;profileView=null;saved.clear();liked.clear();
-     showAuth();
-   }
- }
- sb.auth.onAuthStateChange((event)=>{
-   if(event==='SIGNED_OUT'){
-     user=null;profile=null;profileView=null;saved.clear();liked.clear();
-     showAuth();authModeSet('login');
-   }
- });
+  bind();
+  if(!configured){
+    document.body.innerHTML='<main style="padding:32px;color:#fff;font-family: sans-serif"><h2>Konfigurasi belum tersedia</h2><p>Pastikan config.js berada satu folder dengan index.html dan berisi Supabase URL serta anon/publishable key.</p><a href="login.html" style="color:#c49aff">Buka halaman masuk</a></main>';
+    return;
+  }
+  sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}
+  });
+  // Jangan render aplikasi sebelum status sesi selesai diperiksa.
+  const {data,error}=await sb.auth.getSession();
+  if(error){
+    location.replace('login.html');
+    return;
+  }
+  if(data?.session?.user){
+    try{localStorage.removeItem('wibu_guest_mode')}catch(e){}
+    await enter(data.session.user);
+  }else{
+    let guest=false;
+    try{guest=localStorage.getItem('wibu_guest_mode')==='1'}catch(e){}
+    if(guest){
+      showApp();
+      await loadGallery();
+      goScreen('home');
+    }else{
+      location.replace('login.html');
+      return;
+    }
+  }
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='SIGNED_OUT'){
+      user=null;profile=null;profileView=null;saved.clear();liked.clear();
+      location.replace('login.html');
+    }
+  });
 }
 init();

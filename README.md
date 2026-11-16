@@ -43,3 +43,14 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 - Pengunjung tetap dapat menekan “Jelajahi tanpa login” untuk melihat galeri publik.
 - Jalankan ulang seluruh `supabase.sql` agar hak akses tabel (GRANT) dan RLS diterapkan. Ini memperbaiki error `permission denied for table wallpapers` bila penyebabnya hak akses tabel belum diberikan.
 \n\n### Sesi login\nVersi ini mengaktifkan persistSession Supabase. Setelah login, sesi dipulihkan dari penyimpanan browser saat halaman di-refresh. Tombol Keluar menghapus sesi. Mode Jelajahi tanpa login juga diingat di browser sampai pengguna keluar dari mode tersebut atau login.\n
+
+## Pemisahan halaman login dan aplikasi
+
+- `login.html` adalah halaman khusus Masuk/Daftar.
+- `index.html` adalah halaman aplikasi Wibu Gallery.
+- `login.js` menangani autentikasi dan menyimpan sesi Supabase di localStorage.
+- `app.js` memeriksa sesi sebelum menampilkan aplikasi. Jika belum login dan bukan mode jelajah tamu, pengunjung diarahkan ke `login.html`.
+- Setelah login, refresh atau membuka kembali browser akan memulihkan sesi. Tombol Keluar menghapus sesi dan kembali ke `login.html`.
+- `Jelajahi tanpa login` tetap tersedia untuk galeri publik.
+
+Pastikan `login.html`, `login.js`, `index.html`, `app.js`, `styles.css`, dan `config.js` berada di folder yang sama pada GitHub Pages.
