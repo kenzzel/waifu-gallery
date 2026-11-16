@@ -44,3 +44,26 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .startup-mark img{width:100%;height:100%;display:block;object-fit:contain}
 .brand-mark{width:150px;height:72px;margin-bottom:38px}
 .brand-mark img{width:100%;height:100%;display:block;object-fit:contain;object-position:left center}
+
+/* Owner dashboard */
+.owner-title p{color:var(--wg-muted);font-size:13px;margin-top:6px}
+.owner-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 28px}
+.owner-stat{background:linear-gradient(145deg,#21172e,#121016);border:1px solid #a77bdd30;border-radius:16px;padding:16px;display:grid;gap:8px}
+.owner-stat span,.owner-hint{color:#aa9ab9;font-size:11px}
+.owner-stat strong{font-size:27px;color:#eadcff}
+.owner-section{margin:24px 0}
+.owner-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.owner-section-head h2{font-size:17px;margin:0}
+.owner-list,.owner-photo-list{display:grid;gap:8px}
+.owner-member,.owner-photo{display:flex;align-items:center;gap:10px;padding:11px;background:#121116;border:1px solid #ffffff12;border-radius:13px;min-width:0}
+.owner-member-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#65429b;color:#fff;font-weight:700;flex:none}
+.owner-member-info,.owner-photo-info{display:grid;gap:3px;min-width:0;flex:1}
+.owner-member-info strong,.owner-photo-info strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owner-member-info small,.owner-photo-info small{font-size:10px;color:#8f8799;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.owner-role{font-size:10px;padding:5px 8px;border-radius:20px;background:#27212f;color:#c9a9f2}
+.owner-role.role-owner{background:#4b2870;color:#f0dfff}
+.owner-role.role-admin{background:#263b54;color:#b8dcff}
+.owner-photo img{width:52px;height:58px;object-fit:cover;border-radius:8px;background:#211d27;flex:none}
+.owner-delete{border:1px solid #8d354b;background:#35151f;color:#ffc5d1;border-radius:9px;padding:8px 10px;font-size:11px}
+.owner-empty{padding:16px;color:#95899f;font-size:12px;background:#121116;border-radius:12px}
+@media(min-width:700px){.owner-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}

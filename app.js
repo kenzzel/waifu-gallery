@@ -22,6 +22,9 @@ async function enter(u){
     if(created.error)throw created.error;
     profile=created.data;
   }else profile=p.data;
+  const owner=profile?.role==='owner';
+  $('ownerNavBtn')?.classList.toggle('hidden',!owner);
+  $('ownerPanelBtn')?.classList.toggle('hidden',!owner);
   await loadPersonal();showApp();await loadGallery();goScreen('home');
 }
 async function loadPersonal(){saved.clear();liked.clear();if(!user)return;const [s,l]=await Promise.all([sb.from('saved_items').select('wallpaper_id').eq('user_id',user.id),sb.from('likes').select('wallpaper_id').eq('user_id',user.id)]);(s.data||[]).forEach(x=>saved.add(x.wallpaper_id));(l.data||[]).forEach(x=>liked.add(x.wallpaper_id))}
@@ -64,7 +67,14 @@ async function openMemberProfile(id){
  else{const r=await sb.from('profiles').select('id,display_name,bio,avatar_path').eq('id',id).single();profileView=r.data||{id,display_name:'Member',bio:'',avatar_path:null};profileTab='uploads';}
  closeOverlay('moreSheet');$('detailView').classList.add('hidden');goScreen('profile');
 }
-function goScreen(name){['home','storage','search','profile'].forEach(x=>$(`${x}Screen`).classList.toggle('hidden',x!==name));document.querySelectorAll('[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));if(name==='profile')renderProfile();if(name==='storage')renderStorage()}
+function goScreen(name){
+ if(name==='owner'&&!isOwner()){toast('Halaman ini hanya untuk Owner.');name='home'}
+ ['home','storage','search','profile','owner'].forEach(x=>{const el=$(`${x}Screen`);if(el)el.classList.toggle('hidden',x!==name)});
+ document.querySelectorAll('[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));
+ if(name==='profile')renderProfile();
+ if(name==='storage')renderStorage();
+ if(name==='owner')loadOwnerDashboard();
+}
 function openDetail(id){current=items.find(w=>w.id===id);if(!current)return;refreshDetail();$('detailView').classList.remove('hidden');document.body.style.overflow='hidden'}
 function refreshDetail(){if(!current)return;$('detailImage').referrerPolicy='no-referrer';$('detailImage').src=url(current);$('detailImage').alt=current.title;$('detailTitle').textContent=current.title;$('detailDescription').textContent=[current.anime_title,current.character_name,current.description].filter(Boolean).join(' · ')||'Karya yang dibagikan di Wibu Gallery.';$('detailMember').textContent=current.member_name;const memberAvatar=avatarUrl(current.member_avatar_path);$('detailAvatar').innerHTML=memberAvatar?`<img src="${esc(memberAvatar)}" alt="">`:(current.member_name[0]?.toUpperCase()||'W');$('detailDate').textContent=new Date(current.created_at).toLocaleDateString('id-ID');$('likeBtn').innerHTML=`${liked.has(current.id)?'♥':'♡'} <span>${liked.has(current.id)?'Disukai':'Suka'}</span>`;$('saveBtn').textContent=saved.has(current.id)?'Tersimpan':'Simpan';$('deletePhoto').classList.toggle('hidden',!(user&&(user.id===current.user_id||isOwner())));$('morePreview').src=url(current);const related=items.filter(w=>w.id!==current.id).slice(0,6);renderGrid('relatedGrid',related)}
 async function toggleSaved(id){if(!user){toast('Masuk dulu untuk menyimpan foto ke profil.');return openAuth()}if(saved.has(id)){const r=await sb.from('saved_items').delete().eq('user_id',user.id).eq('wallpaper_id',id);if(r.error)return toast(r.error.message);saved.delete(id);toast('Dihapus dari Disimpan.')}else{const r=await sb.from('saved_items').insert({user_id:user.id,wallpaper_id:id});if(r.error)return toast(r.error.message);saved.add(id);toast('Foto tersimpan di profil Wibu Gallery.')}renderFeed();renderProfile();if(current?.id===id)refreshDetail()}
@@ -168,12 +178,45 @@ async function saveProfile(){
 }
 
 function closeOverlay(id){$(id).classList.add('hidden')}
+async function loadOwnerDashboard(){
+ if(!isOwner()||!user)return;
+ const membersEl=$('ownerMembers'),photosEl=$('ownerPhotos');
+ if(membersEl)membersEl.innerHTML='<p class="owner-empty">Memuat member...</p>';
+ if(photosEl)photosEl.innerHTML='<p class="owner-empty">Memuat foto...</p>';
+ try{
+   const [mr,pr]=await Promise.all([
+     sb.from('profiles').select('id,display_name,role,created_at').order('created_at',{ascending:false}).limit(100),
+     sb.from('wallpapers').select('id,title,user_id,storage_path,created_at').order('created_at',{ascending:false}).limit(30)
+   ]);
+   if(mr.error)throw mr.error;if(pr.error)throw pr.error;
+   const members=mr.data||[],photos=pr.data||[];
+   $('ownerMemberCount').textContent=members.length;
+   $('ownerPhotoCount').textContent=photos.length;
+   $('ownerAdminCount').textContent=members.filter(x=>x.role==='admin').length;
+   $('ownerOwnerCount').textContent=members.filter(x=>x.role==='owner').length;
+   if(membersEl)membersEl.innerHTML=members.map(m=>`<article class="owner-member"><div class="owner-member-avatar">${esc((m.display_name||'M').slice(0,1).toUpperCase())}</div><div class="owner-member-info"><strong>${esc(m.display_name||'Member')}</strong><small>${esc(m.id)}</small></div><span class="owner-role role-${esc(m.role||'member')}">${esc(m.role||'member')}</span></article>`).join('')||'<p class="owner-empty">Belum ada member.</p>';
+   if(photosEl)photosEl.innerHTML=photos.map(w=>`<article class="owner-photo"><img src="${esc(url(w))}" alt="" loading="lazy"><div class="owner-photo-info"><strong>${esc(w.title||'Tanpa judul')}</strong><small>${esc(w.user_id)}</small></div><button class="owner-delete" data-owner-delete="${esc(w.id)}">Hapus</button></article>`).join('')||'<p class="owner-empty">Belum ada foto.</p>';
+ }catch(err){console.error('Owner dashboard:',err);if(membersEl)membersEl.innerHTML=`<p class="owner-empty">Gagal memuat member: ${esc(err.message||'Unknown error')}</p>`;if(photosEl)photosEl.innerHTML=`<p class="owner-empty">Gagal memuat foto: ${esc(err.message||'Unknown error')}</p>`}
+}
+async function deleteOwnerPhoto(id){
+ if(!isOwner())return toast('Akses ditolak.');
+ const w=items.find(x=>x.id===id);if(!w)return toast('Foto tidak ditemukan.');
+ if(!confirm('Hapus foto ini dari galeri?'))return;
+ try{const d=await sb.from('wallpapers').delete().eq('id',id);if(d.error)throw d.error;
+ if(w.storage_path){const r=await sb.storage.from(bucket).remove([w.storage_path]);if(r.error)console.warn(r.error)}
+ toast('Foto berhasil dihapus.');await loadGallery();await loadOwnerDashboard();
+ }catch(err){toast('Gagal menghapus foto: '+(err.message||'Unknown error'))}
+}
 function bind(){
 
 $('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();location.replace('login.html')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
 $('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('quickPhotoInput').onchange=handleQuickPhoto;$('collageInput').onchange=handleCollage;$('saveCollection').onclick=saveCollection;
 $('detailBack').onclick=()=>{$('detailView').classList.add('hidden');document.body.style.overflow=''};$('detailOwner').onclick=()=>openMemberProfile(current.user_id);$('likeBtn').onclick=toggleLike;$('saveBtn').onclick=()=>toggleSaved(current.id);$('commentOpen').onclick=openComments;$('shareBtn').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{if(navigator.share)await navigator.share({title:current.title,url:link});else{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}}catch(e){}};$('detailMore').onclick=()=>{$('moreSheet').classList.remove('hidden')};$('downloadImage').onclick=downloadCurrent;$('copyLink').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}catch(e){toast(link)}closeOverlay('moreSheet')};$('moreFollow').onclick=()=>openMemberProfile(current.user_id);$('addToCollection').onclick=()=>{closeOverlay('moreSheet');openCollection()};$('reportPhoto').onclick=async()=>{if(!user){toast('Masuk dulu untuk melaporkan foto.');return openAuth()}const reason=prompt('Alasan laporan foto ini:');if(!reason?.trim())return;const r=await sb.from('reports').insert({wallpaper_id:current.id,user_id:user.id,reason:reason.trim().slice(0,300)});if(r.error)return toast(r.error.message);toast('Laporan berhasil dikirim.');closeOverlay('moreSheet')};$('deletePhoto').onclick=deleteCurrent;
 $('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)return openAuth();selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editName').value=profile.display_name||'';$('editBio').value=profile.bio||'';previewAvatar(null);$('editModal').classList.remove('hidden')};$('avatarInput').onchange=()=>{const f=$('avatarInput').files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){$('avatarInput').value='';return toast('Gunakan foto JPG, PNG, atau WEBP.')}if(f.size>5*1024*1024){$('avatarInput').value='';return toast('Ukuran foto profil maksimal 5 MB.')}selectedAvatarFile=f;removeAvatarRequested=false;previewAvatar(f)};$('removeAvatar').onclick=()=>{selectedAvatarFile=null;$('avatarInput').value='';removeAvatarRequested=true;previewAvatar(null)};$('saveProfile').onclick=saveProfile;
+$('ownerPanelBtn')?.addEventListener('click',()=>goScreen('owner'));
+$('ownerNavBtn')?.addEventListener('click',()=>goScreen('owner'));
+$('ownerRefresh')?.addEventListener('click',loadOwnerDashboard);
+$('ownerPhotos')?.addEventListener('click',e=>{const b=e.target.closest('[data-owner-delete]');if(b)deleteOwnerPhoto(b.dataset.ownerDelete)});
 document.querySelectorAll('[data-dismiss]').forEach(b=>b.onclick=()=>{const m={plus:'plusMenu',more:'moreSheet',comments:'commentsView',collection:'collectionModal',edit:'editModal'}[b.dataset.dismiss];closeOverlay(m)});
 }
 async function init(){
