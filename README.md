@@ -59,3 +59,8 @@ Pastikan `login.html`, `login.js`, `index.html`, `app.js`, `styles.css`, dan `co
 ## Perbaikan sesi Android/mobile
 
 Supabase Auth dikonfigurasi memakai lock callback ringan agar antrean Web Locks browser yang macet tidak menahan pemeriksaan sesi. Pemeriksaan sesi juga memiliki batas waktu 12 detik dan menampilkan pesan yang bisa ditindaklanjuti, bukan membiarkan layar pemuatan menggantung tanpa batas.
+
+
+## Fix penyimpanan profil
+
+Jika nama/bio sempat berubah tetapi kembali ke email setelah refresh, jalankan SQL migrasi yang dikirim terpisah di chat di Supabase SQL Editor. Perbaikan app sekarang memeriksa apakah UPDATE benar-benar mengembalikan baris; bila profil belum ada, aplikasi membuat baris profil milik akun itu. Pesan sukses hanya ditampilkan setelah data tersimpan dan dikembalikan oleh Supabase.

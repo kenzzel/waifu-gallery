@@ -6,7 +6,19 @@ const url=w=>sb.storage.from(bucket).getPublicUrl(w.storage_path).data.publicUrl
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
 function showApp(){$('appView').classList.remove('hidden');const g=$('startupGate');if(g)g.classList.add('hidden')}
 function openAuth(){location.href='login.html'}
-async function enter(u){if(!u)return;user=u;let p=await sb.from('profiles').select('*').eq('id',u.id).single();profile=p.data||{display_name:u.email,role:'member',bio:''};await loadPersonal();showApp();await loadGallery();goScreen('home')}
+async function enter(u){
+  if(!u)return;
+  user=u;
+  let p=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle();
+  if(p.error)throw p.error;
+  if(!p.data){
+    const initialName=u.user_metadata?.display_name||u.email?.split('@')[0]||'Member';
+    const created=await sb.from('profiles').insert({id:u.id,display_name:initialName,bio:'',role:'member'}).select('*').single();
+    if(created.error)throw created.error;
+    profile=created.data;
+  }else profile=p.data;
+  await loadPersonal();showApp();await loadGallery();goScreen('home');
+}
 async function loadPersonal(){saved.clear();liked.clear();if(!user)return;const [s,l]=await Promise.all([sb.from('saved_items').select('wallpaper_id').eq('user_id',user.id),sb.from('likes').select('wallpaper_id').eq('user_id',user.id)]);(s.data||[]).forEach(x=>saved.add(x.wallpaper_id));(l.data||[]).forEach(x=>liked.add(x.wallpaper_id))}
 async function loadGallery(){const r=await sb.from('wallpapers').select('id,user_id,title,character_name,anime_title,description,storage_path,created_at').order('created_at',{ascending:false});if(r.error){toast(r.error.message);return}const p=await sb.from('profiles').select('id,display_name,avatar_path');const people=new Map((p.data||[]).map(x=>[x.id,x]));items=(r.data||[]).map(x=>({...x,member_name:people.get(x.user_id)?.display_name||'Member',member_avatar_path:people.get(x.user_id)?.avatar_path||null}));$('feedCount').textContent=`${items.length} karya`;renderFeed();renderProfile();if(current)refreshDetail()}
 function card(w){const image=url(w);return `<article class="pin-card" data-open="${w.id}"><img loading="lazy" src="${image}" alt="${esc(w.title)}"><div class="pin-overlay"><span class="pin-title">${esc(w.title)}</span><button class="pin-save" data-save="${w.id}">${saved.has(w.id)?'Tersimpan':'Simpan'}</button></div><div class="pin-credit">${esc(w.member_name)}</div></article>`}
@@ -49,7 +61,41 @@ async function loadComments(){const r=await sb.from('comments').select('id,body,
 async function sendComment(e){e.preventDefault();if(!user){toast('Masuk dulu untuk berkomentar.');return openAuth()}const body=$('commentInput').value.trim();if(!body)return;const r=await sb.from('comments').insert({wallpaper_id:current.id,user_id:user.id,body});if(r.error)return toast(r.error.message);$('commentInput').value='';await loadComments()}
 async function deleteCurrent(){if(!current||!user||!(isOwner()||current.user_id===user.id))return;if(!confirm('Hapus foto ini?'))return;const r=await sb.from('wallpapers').delete().eq('id',current.id);if(r.error)return toast(r.error.message);await sb.storage.from(bucket).remove([current.storage_path]);$('detailView').classList.add('hidden');current=null;toast('Foto dihapus.');await loadGallery()}
 function previewAvatar(file){const box=$('avatarPreview');if(!box)return;if(file){const reader=new FileReader();reader.onload=()=>{box.innerHTML=`<img src="${reader.result}" alt="Pratinjau foto profil">`};reader.readAsDataURL(file)}else{const src=!removeAvatarRequested?avatarUrl(profile?.avatar_path):null;box.innerHTML=src?`<img src="${esc(src)}" alt="Foto profil">`:(profile?.display_name?.[0]?.toUpperCase()||'W')}}
-async function saveProfile(){const display_name=$('editName').value.trim();if(!display_name)return toast('Nama tidak boleh kosong.');const bio=$('editBio').value.trim();let avatar_path=profile?.avatar_path||null;let uploadedPath=null;if(selectedAvatarFile){const ext=selectedAvatarFile.type==='image/png'?'png':selectedAvatarFile.type==='image/webp'?'webp':'jpg';uploadedPath=`${user.id}/avatar-${Date.now()}.${ext}`;const up=await sb.storage.from('profile-avatars').upload(uploadedPath,selectedAvatarFile,{contentType:selectedAvatarFile.type,upsert:false});if(up.error)return toast(`Gagal mengunggah foto profil: ${up.error.message}`);avatar_path=uploadedPath}else if(removeAvatarRequested){avatar_path=null}const r=await sb.from('profiles').update({display_name,bio,avatar_path}).eq('id',user.id);if(r.error){if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);return toast(r.error.message)}const oldPath=profile?.avatar_path;profile={...profile,display_name,bio,avatar_path};if(oldPath&&oldPath!==avatar_path)await sb.storage.from('profile-avatars').remove([oldPath]);selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editModal').classList.add('hidden');renderProfile();await loadGallery();toast('Profil dan foto profil berhasil diperbarui.')}
+async function saveProfile(){
+  const display_name=$('editName').value.trim();
+  if(!display_name)return toast('Nama tidak boleh kosong.');
+  const bio=$('editBio').value.trim();
+  let avatar_path=profile?.avatar_path||null;
+  let uploadedPath=null;
+  if(selectedAvatarFile){
+    const ext=selectedAvatarFile.type==='image/png'?'png':selectedAvatarFile.type==='image/webp'?'webp':'jpg';
+    uploadedPath=`${user.id}/avatar-${Date.now()}.${ext}`;
+    const up=await sb.storage.from('profile-avatars').upload(uploadedPath,selectedAvatarFile,{contentType:selectedAvatarFile.type,upsert:false});
+    if(up.error)return toast(`Gagal mengunggah foto profil: ${up.error.message}`);
+    avatar_path=uploadedPath;
+  }else if(removeAvatarRequested){avatar_path=null}
+  const values={display_name,bio,avatar_path};
+  // .update() may return no error even when RLS affects zero rows.
+  // Require a returned row; if the member profile was never created, insert it.
+  let r=await sb.from('profiles').update(values).eq('id',user.id).select('*').maybeSingle();
+  if(r.error){
+    if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);
+    return toast(`Gagal menyimpan profil: ${r.error.message}`);
+  }
+  if(!r.data){
+    r=await sb.from('profiles').insert({id:user.id,role:'member',...values}).select('*').single();
+    if(r.error){
+      if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);
+      return toast(`Profil belum tersimpan. Jalankan SQL perbaikan profil terlebih dahulu: ${r.error.message}`);
+    }
+  }
+  const oldPath=profile?.avatar_path;
+  profile=r.data;
+  if(oldPath&&oldPath!==avatar_path)await sb.storage.from('profile-avatars').remove([oldPath]);
+  selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';
+  $('editModal').classList.add('hidden');renderProfile();await loadGallery();
+  toast('Profil berhasil disimpan permanen.');
+}
 
 function closeOverlay(id){$(id).classList.add('hidden')}
 function bind(){
