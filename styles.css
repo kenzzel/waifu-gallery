@@ -67,3 +67,27 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .owner-delete{border:1px solid #8d354b;background:#35151f;color:#ffc5d1;border-radius:9px;padding:8px 10px;font-size:11px}
 .owner-empty{padding:16px;color:#95899f;font-size:12px;background:#121116;border-radius:12px}
 @media(min-width:700px){.owner-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Pre-upload photo details editor */
+.pin-editor{position:fixed;inset:0;z-index:120;background:#09080c;color:#f7f3fb;display:flex;flex-direction:column}
+.pin-editor.hidden{display:none}
+.pin-editor-header{height:58px;flex:none;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;text-align:center;border-bottom:1px solid #ffffff12;padding:0 12px}
+.pin-editor-header strong{font-size:15px}
+.pin-editor-body{flex:1;overflow:auto;padding:18px 18px 24px;max-width:760px;width:100%;margin:0 auto;box-sizing:border-box}
+.pin-preview-wrap{height:190px;display:flex;justify-content:center;align-items:center;margin-bottom:20px}
+.pin-preview-wrap img{max-width:100%;max-height:190px;object-fit:contain;border-radius:16px;background:#17131d}
+.pin-field{display:grid;gap:8px;margin:0 0 15px}
+.pin-field>span{font-size:12px;font-weight:650;color:#e8dff1}
+.pin-field input,.pin-field textarea{width:100%;box-sizing:border-box;background:#15121b;color:#f8f4fc;border:1px solid #51445f;border-radius:13px;padding:14px;font:inherit;font-size:14px;outline:none}
+.pin-field input:focus,.pin-field textarea:focus{border-color:#ae79e8;box-shadow:0 0 0 2px #a66be522}
+.pin-field textarea{resize:vertical;min-height:95px}
+.pin-field small{font-size:10px;color:#95899f}
+.pin-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pin-editor-note{font-size:11px;line-height:1.6;color:#a99bb8;background:#1b1523;border:1px solid #a77bdd30;border-radius:12px;padding:12px;margin:8px 0 0}
+.pin-editor-footer{display:flex;gap:10px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #ffffff12;background:#0d0b11}
+.pin-editor-footer button{flex:1;min-height:48px}
+@media(max-width:420px){.pin-field-row{grid-template-columns:1fr}.pin-preview-wrap{height:160px}.pin-preview-wrap img{max-height:160px}}
+
+.detail-tags{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.detail-tag{font-size:11px;color:#d8baff;background:#281b36;border:1px solid #9e6bd633;border-radius:30px;padding:5px 9px}
+.detail-external-link{display:inline-block;margin:4px 0 14px;color:#c89bff;font-size:12px;text-decoration:none}
