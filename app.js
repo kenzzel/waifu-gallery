@@ -20,10 +20,15 @@ async function enter(u){
   await loadPersonal();showApp();await loadGallery();goScreen('home');
 }
 async function loadPersonal(){saved.clear();liked.clear();if(!user)return;const [s,l]=await Promise.all([sb.from('saved_items').select('wallpaper_id').eq('user_id',user.id),sb.from('likes').select('wallpaper_id').eq('user_id',user.id)]);(s.data||[]).forEach(x=>saved.add(x.wallpaper_id));(l.data||[]).forEach(x=>liked.add(x.wallpaper_id))}
-async function loadGallery(){const r=await sb.from('wallpapers').select('id,user_id,title,character_name,anime_title,description,storage_path,created_at').order('created_at',{ascending:false});if(r.error){toast(r.error.message);return}const p=await sb.from('profiles').select('id,display_name,avatar_path');const people=new Map((p.data||[]).map(x=>[x.id,x]));items=(r.data||[]).map(x=>({...x,member_name:people.get(x.user_id)?.display_name||'Member',member_avatar_path:people.get(x.user_id)?.avatar_path||null}));$('feedCount').textContent=`${items.length} karya`;renderFeed();renderProfile();if(current)refreshDetail()}
+async function loadGallery(){const r=await sb.from('wallpapers').select('id,user_id,title,character_name,anime_title,description,storage_path,created_at').order('created_at',{ascending:false});if(r.error){toast(r.error.message);return}const p=await sb.from('profiles').select('id,display_name,avatar_path');const people=new Map((p.data||[]).map(x=>[x.id,x]));items=(r.data||[]).map(x=>({...x,member_name:people.get(x.user_id)?.display_name||'Member',member_avatar_path:people.get(x.user_id)?.avatar_path||null}));$('feedCount').textContent=`${items.length} karya`;renderFeed();renderProfile();renderStorage();if(current)refreshDetail()}
 function card(w){const image=url(w);return `<article class="pin-card" data-open="${w.id}"><img loading="lazy" src="${image}" alt="${esc(w.title)}"><div class="pin-overlay"><span class="pin-title">${esc(w.title)}</span><button class="pin-save" data-save="${w.id}">${saved.has(w.id)?'Tersimpan':'Simpan'}</button></div><div class="pin-credit">${esc(w.member_name)}</div></article>`}
 function renderGrid(id,list){const el=$(id);if(!el)return;el.innerHTML=list.length?list.map(card).join(''):'<div class="empty">Belum ada foto di sini.</div>';el.querySelectorAll('[data-open]').forEach(x=>x.onclick=e=>{if(!e.target.closest('[data-save]'))openDetail(x.dataset.open)});el.querySelectorAll('[data-save]').forEach(x=>x.onclick=e=>{e.stopPropagation();toggleSaved(x.dataset.save)})}
 function renderFeed(){renderGrid('feedGrid',items);const q=$('searchInput')?.value?.toLowerCase().trim()||'';if($('searchGrid'))renderGrid('searchGrid',q?items.filter(w=>[w.title,w.anime_title,w.character_name,w.member_name].join(' ').toLowerCase().includes(q)):[])}
+function renderStorage(){
+ const mine=user?items.filter(w=>w.user_id===user.id):[];
+ const count=$('storageCount');if(count)count.textContent=`${mine.length} foto`;
+ renderGrid('storageGrid',mine);
+}
 function renderProfile(){
  if(!$('profileGrid'))return;
  const target=profileView||profile,targetId=profileView?.id||user?.id;
@@ -44,7 +49,7 @@ async function openMemberProfile(id){
  else{const r=await sb.from('profiles').select('id,display_name,bio,avatar_path').eq('id',id).single();profileView=r.data||{id,display_name:'Member',bio:'',avatar_path:null};profileTab='uploads';}
  closeOverlay('moreSheet');$('detailView').classList.add('hidden');goScreen('profile');
 }
-function goScreen(name){['home','search','profile'].forEach(x=>$(`${x}Screen`).classList.toggle('hidden',x!==name));document.querySelectorAll('[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));if(name==='profile')renderProfile()}
+function goScreen(name){['home','storage','search','profile'].forEach(x=>$(`${x}Screen`).classList.toggle('hidden',x!==name));document.querySelectorAll('[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));if(name==='profile')renderProfile();if(name==='storage')renderStorage()}
 function openDetail(id){current=items.find(w=>w.id===id);if(!current)return;refreshDetail();$('detailView').classList.remove('hidden');document.body.style.overflow='hidden'}
 function refreshDetail(){if(!current)return;$('detailImage').src=url(current);$('detailImage').alt=current.title;$('detailTitle').textContent=current.title;$('detailDescription').textContent=[current.anime_title,current.character_name,current.description].filter(Boolean).join(' · ')||'Karya yang dibagikan di Wibu Gallery.';$('detailMember').textContent=current.member_name;const memberAvatar=avatarUrl(current.member_avatar_path);$('detailAvatar').innerHTML=memberAvatar?`<img src="${esc(memberAvatar)}" alt="">`:(current.member_name[0]?.toUpperCase()||'W');$('detailDate').textContent=new Date(current.created_at).toLocaleDateString('id-ID');$('likeBtn').innerHTML=`${liked.has(current.id)?'♥':'♡'} <span>${liked.has(current.id)?'Disukai':'Suka'}</span>`;$('saveBtn').textContent=saved.has(current.id)?'Tersimpan':'Simpan';$('deletePhoto').classList.toggle('hidden',!(user&&(user.id===current.user_id||isOwner())));$('morePreview').src=url(current);const related=items.filter(w=>w.id!==current.id).slice(0,6);renderGrid('relatedGrid',related)}
 async function toggleSaved(id){if(!user){toast('Masuk dulu untuk menyimpan foto ke profil.');return openAuth()}if(saved.has(id)){const r=await sb.from('saved_items').delete().eq('user_id',user.id).eq('wallpaper_id',id);if(r.error)return toast(r.error.message);saved.delete(id);toast('Dihapus dari Disimpan.')}else{const r=await sb.from('saved_items').insert({user_id:user.id,wallpaper_id:id});if(r.error)return toast(r.error.message);saved.add(id);toast('Foto tersimpan di profil Wibu Gallery.')}renderFeed();renderProfile();if(current?.id===id)refreshDetail()}
@@ -74,9 +79,9 @@ async function uploadFile(f,title){
       await sb.storage.from(bucket).remove([path]).catch(()=>{});
       throw ins.error;
     }
-    toast('Foto berhasil diunggah ke beranda!');
+    toast('Foto tersimpan dan otomatis tampil di Beranda serta Koleksi profilmu!');
     await loadGallery();
-    goScreen('home');
+    goScreen('storage');
   }catch(err){
     console.error('Wibu Gallery upload failed:',err);
     const message=err?.message||String(err);

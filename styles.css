@@ -18,3 +18,10 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 
 /* Profile avatar upload and rendering */
 .profile-avatar img,.mini-avatar img,.avatar-preview img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit}.avatar-editor{display:flex;align-items:center;gap:14px;padding:5px 0 13px}.avatar-preview{width:76px;height:76px;flex:0 0 76px;border-radius:50%;background:linear-gradient(145deg,#9b75c9,#332443);display:grid;place-items:center;overflow:hidden;font-size:28px;font-weight:700}.avatar-editor-actions{display:grid;gap:5px}.avatar-editor-actions b{font-size:12px;color:#f5f3f8}.avatar-editor-actions small{font-size:10px;color:#aaa5b0}.avatar-pick{display:inline-flex!important;width:max-content;align-items:center;background:#382a49;border:1px solid #6d538a;border-radius:9px;padding:8px 12px;color:#eadcff!important;font-size:11px!important;margin:4px 0!important;cursor:pointer}.remove-avatar{width:max-content;font-size:10px}
+
+/* Storage hub */
+.storage-note{color:var(--wg-muted);font-size:13px;line-height:1.55;max-width:520px;margin:8px 0 16px}
+.storage-summary{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;margin:0 0 15px;border:1px solid #ffffff12;border-radius:13px;background:#111016;color:#c9b8dd;font-size:11px}
+.bottom-nav{justify-content:space-between;padding-left:10px;padding-right:10px}
+.bottom-item{min-width:0;flex:1}
+.bottom-add{flex:0 0 49px}
