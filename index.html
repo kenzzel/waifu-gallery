@@ -6,8 +6,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style>
+.startup-gate{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;background:#08080b;color:#f7f4fb;font-family:"DM Sans",sans-serif}
+.startup-gate .startup-mark{width:54px;height:54px;border-radius:17px;background:linear-gradient(135deg,#8b5bd1,#c28af0);display:grid;place-items:center;font-weight:800;font-size:22px;color:white}
+.startup-gate .startup-mark span{color:#f1d8ff}
+.startup-gate p{color:#a8a0b4;font-size:14px;max-width:300px;line-height:1.5}
+.startup-gate a,.startup-gate button{border:1px solid #76529b;border-radius:12px;padding:11px 18px;color:#fff;background:#241a30;text-decoration:none;font:inherit}
+.startup-gate .hidden{display:none!important}
+</style>
 </head>
 <body class="wg-app">
+<div id="startupGate" class="startup-gate" role="status">
+  <div class="startup-mark">W<span>✦</span></div>
+  <strong>Wibu Gallery</strong>
+  <p id="startupMessage">Memeriksa sesi akun...</p>
+  <a id="startupLoginLink" class="hidden" href="login.html">Buka halaman masuk</a>
+  <button id="startupRetry" class="hidden" type="button">Coba lagi</button>
+</div>
 <div id="appView" class="wg-shell hidden">
   <header class="wg-header"><a class="wg-wordmark" href="#"><span class="wg-symbol">W✦</span><span>Wibu Gallery</span></a><div class="wg-head-actions"><button id="searchOpen" class="icon-btn" aria-label="Cari">⌕</button><button id="headerAdd" class="icon-btn accent" aria-label="Tambah">＋</button></div></header>
   <main id="homeScreen" class="wg-screen"><div class="wg-feed-head"><div><span class="eyebrow">DISCOVER ART</span><h1>Temukan inspirasi.</h1></div><span class="feed-count" id="feedCount"></span></div><div id="feedGrid" class="masonry-grid"></div></main>

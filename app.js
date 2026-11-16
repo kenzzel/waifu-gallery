@@ -4,11 +4,8 @@ const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profi
 const bucket='wallpapers';const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url=w=>sb.storage.from(bucket).getPublicUrl(w.storage_path).data.publicUrl;const avatarUrl=path=>path?sb.storage.from('profile-avatars').getPublicUrl(path).data.publicUrl:null;const isOwner=()=>profile?.role==='owner';
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2500)}
-function showAuth(){location.href='login.html'}
-function showApp(){$('appView').classList.remove('hidden')}
+function showApp(){$('appView').classList.remove('hidden');const g=$('startupGate');if(g)g.classList.add('hidden')}
 function openAuth(){location.href='login.html'}
-function authModeSet(m){authMode=m;const reg=m==='register';$('authTitle').textContent=reg?'Buat akun Wibu Gallery':'Masuk ke Wibu Gallery';$('nameWrap').classList.toggle('hidden',!reg);$('displayName').required=reg;$('authSubmit').textContent=reg?'Daftar':'Masuk';$('switchText').textContent=reg?'Sudah punya akun?':'Belum punya akun?';$('switchAuth').textContent=reg?'Masuk':'Daftar'}
-async function authSubmit(e){e.preventDefault();const email=$('email').value.trim(),password=$('password').value;const r=authMode==='register'?await sb.auth.signUp({email,password,options:{data:{display_name:$('displayName').value.trim()}}}):await sb.auth.signInWithPassword({email,password});if(r.error)return $('authMessage').textContent=r.error.message;if(authMode==='register'&&!r.data.session){$('authMessage').textContent='Akun dibuat. Verifikasi email jika diminta, lalu masuk.';return}try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await enter(r.data.user)}
 async function enter(u){if(!u)return;user=u;let p=await sb.from('profiles').select('*').eq('id',u.id).single();profile=p.data||{display_name:u.email,role:'member',bio:''};await loadPersonal();showApp();await loadGallery();goScreen('home')}
 async function loadPersonal(){saved.clear();liked.clear();if(!user)return;const [s,l]=await Promise.all([sb.from('saved_items').select('wallpaper_id').eq('user_id',user.id),sb.from('likes').select('wallpaper_id').eq('user_id',user.id)]);(s.data||[]).forEach(x=>saved.add(x.wallpaper_id));(l.data||[]).forEach(x=>liked.add(x.wallpaper_id))}
 async function loadGallery(){const r=await sb.from('wallpapers').select('id,user_id,title,character_name,anime_title,description,storage_path,created_at').order('created_at',{ascending:false});if(r.error){toast(r.error.message);return}const p=await sb.from('profiles').select('id,display_name,avatar_path');const people=new Map((p.data||[]).map(x=>[x.id,x]));items=(r.data||[]).map(x=>({...x,member_name:people.get(x.user_id)?.display_name||'Member',member_avatar_path:people.get(x.user_id)?.avatar_path||null}));$('feedCount').textContent=`${items.length} karya`;renderFeed();renderProfile();if(current)refreshDetail()}
@@ -64,40 +61,23 @@ $('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)ret
 document.querySelectorAll('[data-dismiss]').forEach(b=>b.onclick=()=>{const m={plus:'plusMenu',more:'moreSheet',comments:'commentsView',collection:'collectionModal',edit:'editModal'}[b.dataset.dismiss];closeOverlay(m)});
 }
 async function init(){
-  bind();
-  if(!configured){
-    document.body.innerHTML='<main style="padding:32px;color:#fff;font-family: sans-serif"><h2>Konfigurasi belum tersedia</h2><p>Pastikan config.js berada satu folder dengan index.html dan berisi Supabase URL serta anon/publishable key.</p><a href="login.html" style="color:#c49aff">Buka halaman masuk</a></main>';
-    return;
-  }
-  sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
-    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}
-  });
-  // Jangan render aplikasi sebelum status sesi selesai diperiksa.
-  const {data,error}=await sb.auth.getSession();
-  if(error){
-    location.replace('login.html');
-    return;
-  }
-  if(data?.session?.user){
-    try{localStorage.removeItem('wibu_guest_mode')}catch(e){}
-    await enter(data.session.user);
-  }else{
-    let guest=false;
-    try{guest=localStorage.getItem('wibu_guest_mode')==='1'}catch(e){}
-    if(guest){
-      showApp();
-      await loadGallery();
-      goScreen('home');
-    }else{
-      location.replace('login.html');
-      return;
+  const gateMessage=$('startupMessage'),gateLogin=$('startupLoginLink'),gateRetry=$('startupRetry');
+  const setGate=(message,showLogin=false)=>{if(gateMessage)gateMessage.textContent=message;if(gateLogin)gateLogin.classList.toggle('hidden',!showLogin);if(gateRetry)gateRetry.classList.remove('hidden')};
+  if(gateRetry)gateRetry.onclick=()=>location.reload();
+  try{
+    if(!configured){setGate('Konfigurasi Supabase belum terbaca. Periksa config.js.',true);return}
+    if(!window.supabase?.createClient){setGate('Library Supabase gagal dimuat. Periksa koneksi internet lalu coba lagi.',true);return}
+    sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+    bind();
+    const {data,error}=await sb.auth.getSession();
+    if(error)throw error;
+    if(data?.session?.user){await enter(data.session.user)}
+    else{
+      let guest=false;try{guest=localStorage.getItem('wibu_guest_mode')==='1'}catch(e){}
+      if(guest){showApp();await loadGallery();goScreen('home')}
+      else{location.replace('login.html');return}
     }
-  }
-  sb.auth.onAuthStateChange((event)=>{
-    if(event==='SIGNED_OUT'){
-      user=null;profile=null;profileView=null;saved.clear();liked.clear();
-      location.replace('login.html');
-    }
-  });
+    sb.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT'){user=null;profile=null;profileView=null;saved.clear();liked.clear();location.replace('login.html')}});
+  }catch(err){console.error('Wibu Gallery startup error:',err);setGate('Aplikasi gagal dimuat: '+(err?.message||'Kesalahan tidak diketahui')+'. Periksa koneksi dan konfigurasi Supabase.',true)}
 }
 init();

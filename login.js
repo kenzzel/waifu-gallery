@@ -49,6 +49,7 @@ async function initLogin(){
     $('authSubmit').disabled=true;
     return;
   }
+  if(!window.supabase?.createClient){$('authMessage').textContent='Library Supabase gagal dimuat. Periksa koneksi internet lalu muat ulang.';$('authSubmit').disabled=true;return}
   sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}
   });
