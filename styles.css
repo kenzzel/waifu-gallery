@@ -30,3 +30,9 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .pin-card{position:relative}
 .pin-card img.image-load-failed{opacity:0;min-height:180px}
 .image-error-label{position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;color:#b7a9c8;font-size:12px;background:linear-gradient(145deg,#19151f,#101014);pointer-events:none}
+
+/* Gallery image rendering hardening */
+.pin-card .gallery-photo{display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;object-fit:contain!important;background:transparent}
+.pin-card.photo-broken{min-height:170px;background:#17151b}
+.pin-card.photo-broken:after{content:'Foto gagal dimuat';display:grid;place-items:center;min-height:170px;color:#c8bad7;font-size:12px}
+.pin-card.photo-loaded{background:transparent}
