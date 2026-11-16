@@ -50,7 +50,47 @@ function refreshDetail(){if(!current)return;$('detailImage').src=url(current);$(
 async function toggleSaved(id){if(!user){toast('Masuk dulu untuk menyimpan foto ke profil.');return openAuth()}if(saved.has(id)){const r=await sb.from('saved_items').delete().eq('user_id',user.id).eq('wallpaper_id',id);if(r.error)return toast(r.error.message);saved.delete(id);toast('Dihapus dari Disimpan.')}else{const r=await sb.from('saved_items').insert({user_id:user.id,wallpaper_id:id});if(r.error)return toast(r.error.message);saved.add(id);toast('Foto tersimpan di profil Wibu Gallery.')}renderFeed();renderProfile();if(current?.id===id)refreshDetail()}
 async function toggleLike(){if(!user){toast('Masuk dulu untuk menyukai foto.');return openAuth()}const id=current.id;if(liked.has(id)){const r=await sb.from('likes').delete().eq('user_id',user.id).eq('wallpaper_id',id);if(r.error)return toast(r.error.message);liked.delete(id)}else{const r=await sb.from('likes').insert({user_id:user.id,wallpaper_id:id});if(r.error)return toast(r.error.message);liked.add(id)}refreshDetail();renderProfile()}
 async function downloadCurrent(){if(!current)return;try{const response=await fetch(url(current));if(!response.ok)throw new Error('Gagal mengambil gambar');const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),a=document.createElement('a');a.href=objectUrl;a.download=(current.title||'wibu-gallery').replace(/[^a-z0-9-_]/gi,'-')+'.'+(blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg');document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(objectUrl);toast('Gambar diunduh ke perangkat.')}catch(e){window.open(url(current),'_blank');toast('Gambar dibuka. Gunakan menu browser untuk mengunduh.')}}
-async function uploadFile(f,title){if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}if(!f)return;if(f.size>10*1024*1024)return toast('Ukuran maksimal 10 MB per foto.');if(!['image/jpeg','image/png','image/webp'].includes(f.type))return toast('Gunakan JPG, PNG, atau WEBP.');toast('Mengunggah foto...');const ext=f.name.split('.').pop().toLowerCase(),path=`${user.id}/${crypto.randomUUID()}.${ext}`;const up=await sb.storage.from(bucket).upload(path,f,{contentType:f.type});if(up.error)return toast(up.error.message);const ins=await sb.from('wallpapers').insert({user_id:user.id,title:(title||f.name.replace(/\.[^.]+$/,'')).slice(0,90)||'Karya baru',storage_path:path});if(ins.error){await sb.storage.from(bucket).remove([path]);return toast(ins.error.message)}toast('Foto berhasil diunggah ke beranda!');await loadGallery();goScreen('home')}
+async function uploadFile(f,title){
+  if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}
+  if(!f)return;
+  if(f.size>10*1024*1024)return toast('Ukuran maksimal 10 MB per foto.');
+  if(!['image/jpeg','image/png','image/webp'].includes(f.type))return toast('Gunakan JPG, PNG, atau WEBP.');
+  toast('Mengunggah foto...');
+  const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
+  const unique=(window.crypto?.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const path=`${user.id}/${unique}.${ext}`;
+  try{
+    const session=await sb.auth.getSession();
+    if(session.error)throw session.error;
+    if(!session.data?.session)throw new Error('Sesi login habis. Silakan login ulang.');
+    const up=await sb.storage.from(bucket).upload(path,f,{contentType:f.type,upsert:false});
+    if(up.error)throw up.error;
+    const ins=await sb.from('wallpapers').insert({
+      user_id:user.id,
+      title:(title||f.name.replace(/\.[^.]+$/,'')).slice(0,90)||'Karya baru',
+      storage_path:path
+    });
+    if(ins.error){
+      await sb.storage.from(bucket).remove([path]).catch(()=>{});
+      throw ins.error;
+    }
+    toast('Foto berhasil diunggah ke beranda!');
+    await loadGallery();
+    goScreen('home');
+  }catch(err){
+    console.error('Wibu Gallery upload failed:',err);
+    const message=err?.message||String(err);
+    if(/failed to fetch|networkerror|load failed/i.test(message)){
+      toast('Gagal terhubung ke Supabase Storage. Periksa koneksi, bucket wallpapers, dan izin Storage. Coba lagi.');
+    }else if(/bucket not found/i.test(message)){
+      toast('Bucket wallpapers belum dibuat. Jalankan SQL perbaikan Storage.');
+    }else if(/row-level security|not authorized|permission denied|unauthorized/i.test(message)){
+      toast('Upload ditolak izin Storage. Jalankan SQL kebijakan upload yang dikirim di chat.');
+    }else{
+      toast('Upload gagal: '+message);
+    }
+  }
+}
 async function handleQuickPhoto(){await uploadFile($('quickPhotoInput').files[0]);$('quickPhotoInput').value=''}
 async function makeCollage(){if(!user){toast('Masuk dulu untuk membuat kolase.');return openAuth()}$('plusMenu').classList.add('hidden');$('collageInput').value='';$('collageInput').click()}
 async function handleCollage(){const fs=[...$('collageInput').files];if(fs.length<2||fs.length>9)return toast('Pilih 2 sampai 9 foto.');if(fs.some(f=>f.size>10*1024*1024||!['image/jpeg','image/png','image/webp'].includes(f.type)))return toast('Pastikan semua foto JPG/PNG/WEBP dan maksimal 10 MB.');const cols=fs.length<=4?2:3,cell=600,rows=Math.ceil(fs.length/cols),canvas=document.createElement('canvas');canvas.width=cols*cell;canvas.height=rows*cell;const ctx=canvas.getContext('2d');ctx.fillStyle='#08080b';ctx.fillRect(0,0,canvas.width,canvas.height);for(let i=0;i<fs.length;i++){const im=new Image(),u=URL.createObjectURL(fs[i]);await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=u});const sc=Math.max(cell/im.width,cell/im.height),w=im.width*sc,h=im.height*sc,x=i%cols*cell,y=Math.floor(i/cols)*cell;ctx.save();ctx.beginPath();ctx.rect(x,y,cell,cell);ctx.clip();ctx.drawImage(im,x+(cell-w)/2,y+(cell-h)/2,w,h);ctx.restore();URL.revokeObjectURL(u)}const blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',.9));if(blob){const f=new File([blob],'kolase-wibu.jpg',{type:'image/jpeg'});await uploadFile(f,prompt('Nama kolase:','Kolase anime favorit'))}}
