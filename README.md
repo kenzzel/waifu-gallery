@@ -42,3 +42,4 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 - Setiap kali halaman dimuat ulang/dibuka kembali, aplikasi menampilkan halaman Masuk terlebih dahulu. Sesi tidak dipulihkan otomatis antar kunjungan.
 - Pengunjung tetap dapat menekan “Jelajahi tanpa login” untuk melihat galeri publik.
 - Jalankan ulang seluruh `supabase.sql` agar hak akses tabel (GRANT) dan RLS diterapkan. Ini memperbaiki error `permission denied for table wallpapers` bila penyebabnya hak akses tabel belum diberikan.
+\n\n### Sesi login\nVersi ini mengaktifkan persistSession Supabase. Setelah login, sesi dipulihkan dari penyimpanan browser saat halaman di-refresh. Tombol Keluar menghapus sesi. Mode Jelajahi tanpa login juga diingat di browser sampai pengguna keluar dari mode tersebut atau login.\n
