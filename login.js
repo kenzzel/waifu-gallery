@@ -51,9 +51,16 @@ async function initLogin(){
   }
   if(!window.supabase?.createClient){$('authMessage').textContent='Library Supabase gagal dimuat. Periksa koneksi internet lalu muat ulang.';$('authSubmit').disabled=true;return}
   sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
-    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,lock:async(_name,_timeout,fn)=>await fn()}
   });
-  const {data,error}=await sb.auth.getSession();
+  let sessionResult;
+  try{
+    sessionResult=await Promise.race([
+      sb.auth.getSession(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Pemeriksaan sesi melewati 12 detik. Muat ulang halaman.')),12000))
+    ]);
+  }catch(e){$('authMessage').textContent='Gagal memeriksa sesi: '+e.message;return}
+  const {data,error}=sessionResult;
   if(error){$('authMessage').textContent='Gagal memeriksa sesi: '+error.message;return;}
   if(data?.session?.user){goApp();return;}
   setMode('login');

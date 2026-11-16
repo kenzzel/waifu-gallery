@@ -67,9 +67,22 @@ async function init(){
   try{
     if(!configured){setGate('Konfigurasi Supabase belum terbaca. Periksa config.js.',true);return}
     if(!window.supabase?.createClient){setGate('Library Supabase gagal dimuat. Periksa koneksi internet lalu coba lagi.',true);return}
-    sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+    sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
+      auth:{
+        persistSession:true,
+        autoRefreshToken:true,
+        detectSessionInUrl:true,
+        storage:window.localStorage,
+        // Avoid a stuck Web Locks queue on some Android/mobile browsers.
+        lock:async(_name,_timeout,fn)=>await fn()
+      }
+    });
     bind();
-    const {data,error}=await sb.auth.getSession();
+    const sessionResult=await Promise.race([
+      sb.auth.getSession(),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Pemeriksaan sesi melewati 12 detik. Coba muat ulang atau buka halaman masuk.')),12000))
+    ]);
+    const {data,error}=sessionResult;
     if(error)throw error;
     if(data?.session?.user){await enter(data.session.user)}
     else{

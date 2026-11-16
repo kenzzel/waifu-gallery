@@ -54,3 +54,8 @@ update public.profiles set role = 'owner' where id = 'UUID-AKUN-KAMU';
 - `Jelajahi tanpa login` tetap tersedia untuk galeri publik.
 
 Pastikan `login.html`, `login.js`, `index.html`, `app.js`, `styles.css`, dan `config.js` berada di folder yang sama pada GitHub Pages.
+
+
+## Perbaikan sesi Android/mobile
+
+Supabase Auth dikonfigurasi memakai lock callback ringan agar antrean Web Locks browser yang macet tidak menahan pemeriksaan sesi. Pemeriksaan sesi juga memiliki batas waktu 12 detik dan menampilkan pesan yang bisa ditindaklanjuti, bukan membiarkan layar pemuatan menggantung tanpa batas.
