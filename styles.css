@@ -91,3 +91,8 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .detail-tags{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
 .detail-tag{font-size:11px;color:#d8baff;background:#281b36;border:1px solid #9e6bd633;border-radius:30px;padding:5px 9px}
 .detail-external-link{display:inline-block;margin:4px 0 14px;color:#c89bff;font-size:12px;text-decoration:none}
+
+/* Beranda: tampilkan foto saja, tanpa heading, jumlah karya, judul, atau nama pengunggah */
+#homeScreen{padding-top:12px}
+#feedGrid .pin-credit{display:none!important}
+#feedGrid .pin-card{margin-bottom:10px}
