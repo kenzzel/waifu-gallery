@@ -36,3 +36,11 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .pin-card.photo-broken{min-height:170px;background:#17151b}
 .pin-card.photo-broken:after{content:'Foto gagal dimuat';display:grid;place-items:center;min-height:170px;color:#c8bad7;font-size:12px}
 .pin-card.photo-loaded{background:transparent}
+
+/* Official WG logo image */
+.wg-symbol{width:66px;height:42px;min-width:66px;border-radius:10px;background:transparent;overflow:visible;padding:0}
+.wg-symbol img{width:100%;height:100%;display:block;object-fit:contain}
+.startup-mark{width:126px!important;height:64px!important;border-radius:0!important;background:transparent!important;display:block!important}
+.startup-mark img{width:100%;height:100%;display:block;object-fit:contain}
+.brand-mark{width:150px;height:72px;margin-bottom:38px}
+.brand-mark img{width:100%;height:100%;display:block;object-fit:contain;object-position:left center}
