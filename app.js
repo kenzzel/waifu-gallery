@@ -83,6 +83,11 @@ async function downloadCurrent(){if(!current)return;try{const response=await fet
 async function uploadFile(f,metadata={}){
   if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}
   if(!f)return;
+  // Safety gate: every selected image must pass through the details editor first.
+  if(!metadata || metadata.confirmed !== true){
+    openPinEditor(f);
+    return;
+  }
   if(f.size>10*1024*1024)return toast('Ukuran maksimal 10 MB per foto.');
   if(!['image/jpeg','image/png','image/webp'].includes(f.type))return toast('Gunakan JPG, PNG, atau WEBP.');
   if(typeof metadata==='string')metadata={title:metadata};
@@ -156,15 +161,17 @@ async function publishPin(){
   const tags=$('pinTags').value.split(',').map(x=>x.trim()).filter(Boolean);
   if(!$('pinTitle').value.trim())return toast('Isi judul foto terlebih dahulu.');
   await uploadFile(pendingUploadFile,{
-    title:$('pinTitle').value,description:$('pinDescription').value,
+    confirmed:true,title:$('pinTitle').value,description:$('pinDescription').value,
     tags,external_url:$('pinExternalUrl').value
   });
 }
-async function handleQuickPhoto(){
-  const f=$('quickPhotoInput').files[0];
-  $('quickPhotoInput').value='';
+function handleQuickPhoto(){
+  const input=$('quickPhotoInput');
+  const f=input.files && input.files[0];
+  input.value='';
   if(f)openPinEditor(f);
 }
+window.wgHandleUploadSelection=handleQuickPhoto;
 async function makeCollage(){if(!user){toast('Masuk dulu untuk membuat kolase.');return openAuth()}$('plusMenu').classList.add('hidden');$('collageInput').value='';$('collageInput').click()}
 async function handleCollage(){const fs=[...$('collageInput').files];if(fs.length<2||fs.length>9)return toast('Pilih 2 sampai 9 foto.');if(fs.some(f=>f.size>10*1024*1024||!['image/jpeg','image/png','image/webp'].includes(f.type)))return toast('Pastikan semua foto JPG/PNG/WEBP dan maksimal 10 MB.');const cols=fs.length<=4?2:3,cell=600,rows=Math.ceil(fs.length/cols),canvas=document.createElement('canvas');canvas.width=cols*cell;canvas.height=rows*cell;const ctx=canvas.getContext('2d');ctx.fillStyle='#08080b';ctx.fillRect(0,0,canvas.width,canvas.height);for(let i=0;i<fs.length;i++){const im=new Image(),u=URL.createObjectURL(fs[i]);await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=u});const sc=Math.max(cell/im.width,cell/im.height),w=im.width*sc,h=im.height*sc,x=i%cols*cell,y=Math.floor(i/cols)*cell;ctx.save();ctx.beginPath();ctx.rect(x,y,cell,cell);ctx.clip();ctx.drawImage(im,x+(cell-w)/2,y+(cell-h)/2,w,h);ctx.restore();URL.revokeObjectURL(u)}const blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',.9));if(blob){const f=new File([blob],'kolase-wibu.jpg',{type:'image/jpeg'});openPinEditor(f)}}
 async function openCollection(){if(!user){toast('Masuk dulu untuk membuat koleksi.');return openAuth()}$('plusMenu').classList.add('hidden');$('collectionName').value='';const mine=items.filter(w=>w.user_id===user.id);$('collectionPhotoChoices').innerHTML=mine.length?mine.map(w=>`<label><input type="checkbox" value="${w.id}"><span>${esc(w.title)}</span></label>`).join(''):'<p class="muted">Upload foto dulu agar bisa dimasukkan ke koleksi.</p>';$('collectionModal').classList.remove('hidden')}
@@ -253,7 +260,7 @@ async function deleteOwnerPhoto(id){
 function bind(){
 
 $('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();location.replace('login.html')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
-$('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('quickPhotoInput').onchange=handleQuickPhoto;$('pinPublish').onclick=publishPin;$('pinEditorClose').onclick=closePinEditor;$('pinEditorCancel').onclick=closePinEditor;
+$('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('pinPublish').onclick=publishPin;$('pinEditorClose').onclick=closePinEditor;$('pinEditorCancel').onclick=closePinEditor;
 $('pinTags').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();toast('Pisahkan tag dengan koma.')}});$('collageInput').onchange=handleCollage;$('saveCollection').onclick=saveCollection;
 $('detailBack').onclick=()=>{$('detailView').classList.add('hidden');document.body.style.overflow=''};$('detailOwner').onclick=()=>openMemberProfile(current.user_id);$('likeBtn').onclick=toggleLike;$('saveBtn').onclick=()=>toggleSaved(current.id);$('commentOpen').onclick=openComments;$('shareBtn').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{if(navigator.share)await navigator.share({title:current.title,url:link});else{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}}catch(e){}};$('detailMore').onclick=()=>{$('moreSheet').classList.remove('hidden')};$('downloadImage').onclick=downloadCurrent;$('copyLink').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}catch(e){toast(link)}closeOverlay('moreSheet')};$('moreFollow').onclick=()=>openMemberProfile(current.user_id);$('addToCollection').onclick=()=>{closeOverlay('moreSheet');openCollection()};$('reportPhoto').onclick=async()=>{if(!user){toast('Masuk dulu untuk melaporkan foto.');return openAuth()}const reason=prompt('Alasan laporan foto ini:');if(!reason?.trim())return;const r=await sb.from('reports').insert({wallpaper_id:current.id,user_id:user.id,reason:reason.trim().slice(0,300)});if(r.error)return toast(r.error.message);toast('Laporan berhasil dikirim.');closeOverlay('moreSheet')};$('deletePhoto').onclick=deleteCurrent;
 $('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)return openAuth();selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editName').value=profile.display_name||'';$('editBio').value=profile.bio||'';previewAvatar(null);$('editModal').classList.remove('hidden')};$('avatarInput').onchange=()=>{const f=$('avatarInput').files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){$('avatarInput').value='';return toast('Gunakan foto JPG, PNG, atau WEBP.')}if(f.size>5*1024*1024){$('avatarInput').value='';return toast('Ukuran foto profil maksimal 5 MB.')}selectedAvatarFile=f;removeAvatarRequested=false;previewAvatar(f)};$('removeAvatar').onclick=()=>{selectedAvatarFile=null;$('avatarInput').value='';removeAvatarRequested=true;previewAvatar(null)};$('saveProfile').onclick=saveProfile;
