@@ -67,33 +67,43 @@ async function saveProfile(){
   const bio=$('editBio').value.trim();
   let avatar_path=profile?.avatar_path||null;
   let uploadedPath=null;
+
   if(selectedAvatarFile){
     const ext=selectedAvatarFile.type==='image/png'?'png':selectedAvatarFile.type==='image/webp'?'webp':'jpg';
     uploadedPath=`${user.id}/avatar-${Date.now()}.${ext}`;
     const up=await sb.storage.from('profile-avatars').upload(uploadedPath,selectedAvatarFile,{contentType:selectedAvatarFile.type,upsert:false});
     if(up.error)return toast(`Gagal mengunggah foto profil: ${up.error.message}`);
     avatar_path=uploadedPath;
-  }else if(removeAvatarRequested){avatar_path=null}
-  const values={display_name,bio,avatar_path};
-  // .update() may return no error even when RLS affects zero rows.
-  // Require a returned row; if the member profile was never created, insert it.
-  let r=await sb.from('profiles').update(values).eq('id',user.id).select('*').maybeSingle();
-  if(r.error){
+  }else if(removeAvatarRequested){
+    avatar_path=null;
+  }
+
+  // Save through a narrowly scoped SECURITY DEFINER RPC. The SQL function
+  // always derives the target row from auth.uid(), never from a client user id.
+  const result=await sb.rpc('update_my_profile',{
+    p_display_name:display_name,
+    p_bio:bio,
+    p_avatar_path:avatar_path
+  });
+  if(result.error){
     if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);
-    return toast(`Gagal menyimpan profil: ${r.error.message}`);
+    return toast(`Profil gagal disimpan: ${result.error.message}. Pastikan SQL update_my_profile sudah dijalankan di Supabase.`);
   }
-  if(!r.data){
-    r=await sb.from('profiles').insert({id:user.id,role:'member',...values}).select('*').single();
-    if(r.error){
-      if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);
-      return toast(`Profil belum tersimpan. Jalankan SQL perbaikan profil terlebih dahulu: ${r.error.message}`);
-    }
+  const savedRow=Array.isArray(result.data)?result.data[0]:result.data;
+  if(!savedRow||savedRow.display_name!==display_name||savedRow.bio!==bio||((savedRow.avatar_path||null)!==(avatar_path||null))){
+    if(uploadedPath)await sb.storage.from('profile-avatars').remove([uploadedPath]);
+    return toast('Database belum mengonfirmasi perubahan profil. Coba lagi.');
   }
+
   const oldPath=profile?.avatar_path;
-  profile=r.data;
+  profile=savedRow;
   if(oldPath&&oldPath!==avatar_path)await sb.storage.from('profile-avatars').remove([oldPath]);
-  selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';
-  $('editModal').classList.add('hidden');renderProfile();await loadGallery();
+  selectedAvatarFile=null;
+  removeAvatarRequested=false;
+  $('avatarInput').value='';
+  $('editModal').classList.add('hidden');
+  renderProfile();
+  await loadGallery();
   toast('Profil berhasil disimpan permanen.');
 }
 

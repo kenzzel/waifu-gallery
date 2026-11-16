@@ -64,3 +64,8 @@ Supabase Auth dikonfigurasi memakai lock callback ringan agar antrean Web Locks 
 ## Fix penyimpanan profil
 
 Jika nama/bio sempat berubah tetapi kembali ke email setelah refresh, jalankan SQL migrasi yang dikirim terpisah di chat di Supabase SQL Editor. Perbaikan app sekarang memeriksa apakah UPDATE benar-benar mengembalikan baris; bila profil belum ada, aplikasi membuat baris profil milik akun itu. Pesan sukses hanya ditampilkan setelah data tersimpan dan dikembalikan oleh Supabase.
+
+
+## Simpan profil (SQL dikirim terpisah di chat)
+
+Versi ini menyimpan nama, bio, dan avatar melalui RPC `update_my_profile`. Jalankan SQL migrasi yang dikirim terpisah di chat pada Supabase SQL Editor sebelum memakai tombol Simpan profil. Fungsi RPC mengambil identitas dari `auth.uid()` sehingga pengguna hanya dapat mengubah profil akunnya sendiri.
