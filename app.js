@@ -1,6 +1,6 @@
 const cfg=window.WIBU_CONFIG||{};
 const configured=cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&!cfg.SUPABASE_URL.includes('YOUR_')&&!cfg.SUPABASE_ANON_KEY.includes('YOUR_');
-const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profileView=null,items=[],saved=new Set(),liked=new Set(),current=null,socialState={following:0,followers:0,likes:0,isFollowing:false,isFollowedBy:false},authMode='login',profileTab='saved',collections=[],selectedAvatarFile=null,removeAvatarRequested=false,cropSourceFile=null,cropObjectUrl=null,cropBaseScale=1,cropZoom=1,cropOffsetX=0,cropOffsetY=0,cropPointer=null,cropNaturalWidth=0,cropNaturalHeight=0;
+const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profileView=null,items=[],saved=new Set(),liked=new Set(),current=null,socialState={following:0,followers:0,likes:0,isFollowing:false,isFollowedBy:false},authMode='login',profileTab='saved',collections=[],selectedAvatarFile=null,removeAvatarRequested=false,cropSourceFile=null,cropObjectUrl=null,cropBaseScale=1,cropZoom=1,cropOffsetX=0,cropOffsetY=0,cropPointer=null,cropNaturalWidth=0,cropNaturalHeight=0,uploadInProgress=false;
 const bucket='wallpapers';const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url=w=>{
   if(!w?.storage_path)return '';
@@ -181,7 +181,9 @@ async function uploadFile(f,metadata={}){
   const tags=[...new Set((metadata.tags||[]).map(x=>String(x).trim().toLowerCase()).filter(Boolean))].slice(0,12);
   const externalUrl=(metadata.external_url||'').trim().slice(0,500);
   if(externalUrl&&!/^https?:\/\/\S+$/i.test(externalUrl))return toast('Tautan harus diawali http:// atau https://');
-  toast('Mengunggah foto...');
+  if(uploadInProgress)return;
+  uploadInProgress=true;
+  showUploadProgress();
   const ext=(f.name.split('.').pop()||'jpg').toLowerCase();
   const unique=(window.crypto?.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const path=`${user.id}/${unique}.${ext}`;
@@ -200,7 +202,7 @@ async function uploadFile(f,metadata={}){
       throw ins.error;
     }
     closePinEditor();
-    toast('Foto berhasil diterbitkan dan masuk ke Beranda serta Koleksi profilmu!');
+    toast('Gambar Anda telah diupload!');
     await loadGallery();
     goScreen('storage');
   }catch(err){
@@ -217,7 +219,20 @@ async function uploadFile(f,metadata={}){
     }else{
       toast('Upload gagal: '+message);
     }
+  }finally{
+    uploadInProgress=false;
+    hideUploadProgress();
   }
+}
+function showUploadProgress(){
+ const layer=$('uploadProgress');
+ if(layer){layer.classList.remove('hidden');layer.setAttribute('aria-hidden','false');}
+ document.body.classList.add('uploading-photo');
+}
+function hideUploadProgress(){
+ const layer=$('uploadProgress');
+ if(layer){layer.classList.add('hidden');layer.setAttribute('aria-hidden','true');}
+ document.body.classList.remove('uploading-photo');
 }
 function openPinEditor(file){
   if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}
