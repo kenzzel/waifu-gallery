@@ -1,6 +1,6 @@
 const cfg=window.WIBU_CONFIG||{};
 const configured=cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&!cfg.SUPABASE_URL.includes('YOUR_')&&!cfg.SUPABASE_ANON_KEY.includes('YOUR_');
-const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profileView=null,items=[],saved=new Set(),liked=new Set(),current=null,socialState={following:0,followers:0,likes:0,isFollowing:false,isFollowedBy:false},authMode='login',profileTab='saved',collections=[],selectedAvatarFile=null,removeAvatarRequested=false;
+const $=id=>document.getElementById(id);let sb=null,user=null,profile=null,profileView=null,items=[],saved=new Set(),liked=new Set(),current=null,socialState={following:0,followers:0,likes:0,isFollowing:false,isFollowedBy:false},authMode='login',profileTab='saved',collections=[],selectedAvatarFile=null,removeAvatarRequested=false,cropSourceFile=null,cropObjectUrl=null,cropBaseScale=1,cropZoom=1,cropOffsetX=0,cropOffsetY=0,cropPointer=null,cropNaturalWidth=0,cropNaturalHeight=0;
 const bucket='wallpapers';const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const url=w=>{
   if(!w?.storage_path)return '';
@@ -266,6 +266,57 @@ async function loadComments(){const r=await sb.from('comments').select('id,body,
 async function sendComment(e){e.preventDefault();if(!user){toast('Masuk dulu untuk berkomentar.');return openAuth()}const body=$('commentInput').value.trim();if(!body)return;const r=await sb.from('comments').insert({wallpaper_id:current.id,user_id:user.id,body});if(r.error)return toast(r.error.message);$('commentInput').value='';await loadComments()}
 async function deleteCurrent(){if(!current||!user||!(isOwner()||current.user_id===user.id))return;if(!confirm('Hapus foto ini?'))return;const r=await sb.from('wallpapers').delete().eq('id',current.id);if(r.error)return toast(r.error.message);await sb.storage.from(bucket).remove([current.storage_path]);$('detailView').classList.add('hidden');current=null;toast('Foto dihapus.');await loadGallery()}
 function previewAvatar(file){const box=$('avatarPreview');if(!box)return;if(file){const reader=new FileReader();reader.onload=()=>{box.innerHTML=`<img src="${reader.result}" alt="Pratinjau foto profil">`};reader.readAsDataURL(file)}else{const src=!removeAvatarRequested?avatarUrl(profile?.avatar_path):null;box.innerHTML=src?`<img src="${esc(src)}" alt="Foto profil">`:(profile?.display_name?.[0]?.toUpperCase()||'W')}}
+function clampCropOffset(){
+ const stage=$('avatarCropStage'),size=stage.getBoundingClientRect().width;
+ const w=cropNaturalWidth*cropBaseScale*cropZoom,h=cropNaturalHeight*cropBaseScale*cropZoom;
+ cropOffsetX=Math.max(-(w-size)/2,Math.min((w-size)/2,cropOffsetX));
+ cropOffsetY=Math.max(-(h-size)/2,Math.min((h-size)/2,cropOffsetY));
+}
+function renderAvatarCrop(){
+ const img=$('avatarCropImage');if(!img||!cropNaturalWidth)return;
+ clampCropOffset();
+ img.style.width=`${cropNaturalWidth*cropBaseScale*cropZoom}px`;
+ img.style.height=`${cropNaturalHeight*cropBaseScale*cropZoom}px`;
+ img.style.transform=`translate(calc(-50% + ${cropOffsetX}px),calc(-50% + ${cropOffsetY}px))`;
+ $('avatarCropZoomValue').textContent=`${Math.round(cropZoom*100)}%`;
+}
+function openAvatarCrop(file){
+ cropSourceFile=file;
+ if(cropObjectUrl)URL.revokeObjectURL(cropObjectUrl);
+ cropObjectUrl=URL.createObjectURL(file);
+ const img=$('avatarCropImage');img.onload=()=>{
+   cropNaturalWidth=img.naturalWidth;cropNaturalHeight=img.naturalHeight;
+   const size=$('avatarCropStage').getBoundingClientRect().width;
+   cropBaseScale=Math.max(size/cropNaturalWidth,size/cropNaturalHeight);
+   cropZoom=1;cropOffsetX=0;cropOffsetY=0;
+   $('avatarCropZoom').value='100';renderAvatarCrop();
+ };
+ img.src=cropObjectUrl;
+ $('avatarCropModal').classList.remove('hidden');
+}
+function closeAvatarCrop(){
+ $('avatarCropModal').classList.add('hidden');
+ if(cropObjectUrl){URL.revokeObjectURL(cropObjectUrl);cropObjectUrl=null}
+ cropSourceFile=null;cropNaturalWidth=0;cropNaturalHeight=0;cropPointer=null;
+ $('avatarInput').value='';
+}
+async function confirmAvatarCrop(){
+ if(!cropSourceFile||!cropNaturalWidth)return;
+ const stage=$('avatarCropStage'),size=stage.getBoundingClientRect().width,scale=cropBaseScale*cropZoom;
+ const sw=size/scale,sh=size/scale;
+ let sx=(cropNaturalWidth-sw)/2-cropOffsetX/scale;
+ let sy=(cropNaturalHeight-sh)/2-cropOffsetY/scale;
+ sx=Math.max(0,Math.min(cropNaturalWidth-sw,sx));sy=Math.max(0,Math.min(cropNaturalHeight-sh,sy));
+ const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;
+ const ctx=canvas.getContext('2d');
+ try{
+   const image=$('avatarCropImage');ctx.drawImage(image,sx,sy,sw,sh,0,0,512,512);
+   const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Gagal memproses foto.')),'image/jpeg',.92));
+   selectedAvatarFile=new File([blob],`avatar-${Date.now()}.jpg`,{type:'image/jpeg'});
+   removeAvatarRequested=false;previewAvatar(selectedAvatarFile);closeAvatarCrop();
+   toast('Foto profil sudah dipotong 1:1. Tekan Simpan perubahan untuk menerapkan.');
+ }catch(err){toast(err.message||'Gagal memotong foto.')}
+}
 async function saveProfile(){
   const display_name=$('editName').value.trim();
   if(!display_name)return toast('Nama tidak boleh kosong.');
@@ -348,7 +399,7 @@ $('profileFollowBtn').onclick=toggleProfileFollow;$('profileFollowingStat').oncl
 $('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('pinPublish').onclick=publishPin;$('pinEditorClose').onclick=closePinEditor;$('pinEditorCancel').onclick=closePinEditor;
 $('pinTags').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();toast('Pisahkan tag dengan koma.')}});$('collageInput').onchange=handleCollage;$('saveCollection').onclick=saveCollection;
 $('detailBack').onclick=()=>{$('detailView').classList.add('hidden');document.body.style.overflow=''};$('detailOwner').onclick=()=>openMemberProfile(current.user_id);$('likeBtn').onclick=toggleLike;$('saveBtn').onclick=()=>toggleSaved(current.id);$('commentOpen').onclick=openComments;$('shareBtn').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{if(navigator.share)await navigator.share({title:current.title,url:link});else{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}}catch(e){}};$('detailMore').onclick=()=>{$('moreSheet').classList.remove('hidden')};$('downloadImage').onclick=downloadCurrent;$('copyLink').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}catch(e){toast(link)}closeOverlay('moreSheet')};$('moreFollow').onclick=()=>openMemberProfile(current.user_id);$('addToCollection').onclick=()=>{closeOverlay('moreSheet');openCollection()};$('reportPhoto').onclick=async()=>{if(!user){toast('Masuk dulu untuk melaporkan foto.');return openAuth()}const reason=prompt('Alasan laporan foto ini:');if(!reason?.trim())return;const r=await sb.from('reports').insert({wallpaper_id:current.id,user_id:user.id,reason:reason.trim().slice(0,300)});if(r.error)return toast(r.error.message);toast('Laporan berhasil dikirim.');closeOverlay('moreSheet')};$('deletePhoto').onclick=deleteCurrent;
-$('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)return openAuth();selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editName').value=profile.display_name||'';$('editBio').value=profile.bio||'';previewAvatar(null);$('editModal').classList.remove('hidden')};$('avatarInput').onchange=()=>{const f=$('avatarInput').files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){$('avatarInput').value='';return toast('Gunakan foto JPG, PNG, atau WEBP.')}if(f.size>5*1024*1024){$('avatarInput').value='';return toast('Ukuran foto profil maksimal 5 MB.')}selectedAvatarFile=f;removeAvatarRequested=false;previewAvatar(f)};$('removeAvatar').onclick=()=>{selectedAvatarFile=null;$('avatarInput').value='';removeAvatarRequested=true;previewAvatar(null)};$('saveProfile').onclick=saveProfile;
+$('commentForm').onsubmit=sendComment;$('editProfile').onclick=()=>{if(!user)return openAuth();selectedAvatarFile=null;removeAvatarRequested=false;$('avatarInput').value='';$('editName').value=profile.display_name||'';$('editBio').value=profile.bio||'';previewAvatar(null);$('editModal').classList.remove('hidden')};$('avatarInput').onchange=()=>{const f=$('avatarInput').files[0];if(!f)return;if(!['image/jpeg','image/png','image/webp'].includes(f.type)){$('avatarInput').value='';return toast('Gunakan foto JPG, PNG, atau WEBP.')}if(f.size>5*1024*1024){$('avatarInput').value='';return toast('Ukuran foto profil maksimal 5 MB.')}openAvatarCrop(f)};$('removeAvatar').onclick=()=>{selectedAvatarFile=null;$('avatarInput').value='';removeAvatarRequested=true;previewAvatar(null)};$('saveProfile').onclick=saveProfile;$('avatarCropCancel').onclick=closeAvatarCrop;$('avatarCropConfirm').onclick=confirmAvatarCrop;$('avatarCropZoom').oninput=()=>{cropZoom=Number($('avatarCropZoom').value)/100;renderAvatarCrop()};$('avatarCropStage').onpointerdown=e=>{if(!cropNaturalWidth)return;cropPointer={x:e.clientX,y:e.clientY,ox:cropOffsetX,oy:cropOffsetY};$('avatarCropStage').setPointerCapture(e.pointerId)};$('avatarCropStage').onpointermove=e=>{if(!cropPointer)return;cropOffsetX=cropPointer.ox+(e.clientX-cropPointer.x);cropOffsetY=cropPointer.oy+(e.clientY-cropPointer.y);renderAvatarCrop()};$('avatarCropStage').onpointerup=$('avatarCropStage').onpointercancel=()=>{cropPointer=null};
 $('ownerPanelBtn')?.addEventListener('click',()=>goScreen('owner'));
 $('ownerNavBtn')?.addEventListener('click',()=>goScreen('owner'));
 $('ownerRefresh')?.addEventListener('click',loadOwnerDashboard);
