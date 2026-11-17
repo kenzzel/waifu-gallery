@@ -138,3 +138,43 @@ body.wg-app{background:var(--wg-bg);color:var(--wg-text);font-family:'DM Sans',s
 .avatar-crop-actions{display:flex;justify-content:flex-end;gap:10px}
 .avatar-crop-actions button{min-width:110px}
 .avatar-preview{aspect-ratio:1/1}
+
+/* Compact, centered avatar crop dialog for mobile */
+.avatar-crop-overlay{
+  z-index:80;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:16px !important;
+  box-sizing:border-box;
+}
+.avatar-crop-sheet{
+  width:calc(100% - 0px) !important;
+  max-width:380px !important;
+  max-height:calc(100dvh - 32px) !important;
+  margin:auto;
+  border-radius:22px !important;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom)) !important;
+  overflow-y:auto;
+  box-sizing:border-box;
+  flex:0 1 auto;
+}
+.avatar-crop-sheet .sheet-grab{margin-bottom:12px}
+.avatar-crop-sheet .sheet-heading{font-size:18px;margin-bottom:8px}
+.avatar-crop-help{font-size:12px;line-height:1.45;margin:0 0 14px}
+.avatar-crop-stage{
+  width:min(72vw,280px) !important;
+  max-width:100%;
+  aspect-ratio:1/1;
+  margin:0 auto 14px;
+  border-radius:16px;
+  background:#09090c;
+}
+.avatar-crop-zoom-row{margin:0 0 16px;gap:9px}
+.avatar-crop-actions{display:flex;gap:9px}
+.avatar-crop-actions button{flex:1;min-width:0;min-height:44px}
+@media(max-height:650px){
+  .avatar-crop-sheet{max-height:calc(100dvh - 18px) !important;padding-top:12px !important}
+  .avatar-crop-stage{width:min(58vw,220px) !important;margin-bottom:10px}
+  .avatar-crop-help{margin-bottom:9px}
+  .avatar-crop-zoom-row{margin-bottom:10px}
+}
