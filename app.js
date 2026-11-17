@@ -80,8 +80,8 @@ async function loadProfileSocial(targetId,photoIds){
    const following=followingRes.data||[],followers=followersRes.data||[];
    socialState={
      following:following.length,followers:followers.length,likes:(likesRes.data||[]).length,
-     isFollowing:!!user&&following.some(x=>x.following_id===user.id),
-     isFollowedBy:!!user&&followers.some(x=>x.follower_id===user.id)
+     isFollowing:!!user&&followers.some(x=>x.follower_id===user.id),
+     isFollowedBy:!!user&&following.some(x=>x.following_id===user.id)
    };
    $('profileFollowingCount').textContent=following.length;
    $('profileFollowersCount').textContent=followers.length;
@@ -98,6 +98,35 @@ async function loadProfileSocial(targetId,photoIds){
    console.error('Profile social stats:',err);
    $('profileFollowingCount').textContent='0';$('profileFollowersCount').textContent='0';$('profileLikesCount').textContent='0';
    if(/user_follows/.test(err.message||''))toast('Jalankan SQL fitur mengikuti terlebih dahulu.');
+ }
+}
+async function openFollowList(kind){
+ const targetId=profileView?.id||user?.id;
+ if(!targetId)return;
+ const title=kind==='following'?'Mengikuti':'Pengikut';
+ $('followListTitle').textContent=title;
+ $('followListContent').innerHTML='<div class="follow-list-loading">Memuat member...</div>';
+ $('followListModal').classList.remove('hidden');
+ try{
+   const column=kind==='following'?'follower_id':'following_id';
+   const idColumn=kind==='following'?'following_id':'follower_id';
+   const rel=await sb.from('user_follows').select('follower_id,following_id').eq(column,targetId).order('created_at',{ascending:false});
+   if(rel.error)throw rel.error;
+   const ids=(rel.data||[]).map(x=>x[idColumn]).filter(Boolean);
+   if(!ids.length){$('followListContent').innerHTML='<div class="follow-list-empty">Belum ada member di daftar ini.</div>';return}
+   const people=await sb.from('profiles').select('id,display_name,avatar_path,bio').in('id',ids);
+   if(people.error)throw people.error;
+   const byId=new Map((people.data||[]).map(p=>[p.id,p]));
+   const ordered=ids.map(id=>byId.get(id)).filter(Boolean);
+   $('followListContent').innerHTML=ordered.length?ordered.map(p=>{
+     const avatar=avatarUrl(p.avatar_path);
+     return `<button class="follow-list-member" data-member-id="${esc(p.id)}"><span class="follow-list-avatar">${avatar?`<img src="${esc(avatar)}" alt="">`:esc((p.display_name||'M')[0].toUpperCase())}</span><span class="follow-list-member-info"><b>${esc(p.display_name||'Member')}</b><small>@${esc((p.display_name||'member').toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,22))}</small></span><span class="follow-list-arrow">›</span></button>`;
+   }).join(''):'<div class="follow-list-empty">Profil member tidak ditemukan.</div>';
+   $('followListContent').querySelectorAll('[data-member-id]').forEach(btn=>btn.onclick=()=>{$('followListModal').classList.add('hidden');openMemberProfile(btn.dataset.memberId)});
+ }catch(err){
+   console.error('Follow list:',err);
+   $('followListContent').innerHTML='<div class="follow-list-empty">Gagal memuat daftar. Coba lagi.</div>';
+   toast('Gagal memuat daftar member: '+(err.message||'Unknown error'));
  }
 }
 async function toggleProfileFollow(){
@@ -315,7 +344,7 @@ async function deleteOwnerPhoto(id){
 }
 function bind(){
 
-$('profileFollowBtn').onclick=toggleProfileFollow;$('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();location.replace('login.html')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
+$('profileFollowBtn').onclick=toggleProfileFollow;$('profileFollowingStat').onclick=()=>openFollowList('following');$('profileFollowersStat').onclick=()=>openFollowList('followers');$('followListClose').onclick=()=>closeOverlay('followListModal');$('searchOpen').onclick=()=>goScreen('search');$('headerAdd').onclick=$('bottomAdd').onclick=()=>{if(!user){toast('Masuk dulu untuk mengunggah.');return openAuth()}$('plusMenu').classList.remove('hidden')};document.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>{if(b.dataset.screen==='profile'&&!user){openAuth();return}if(b.dataset.screen==='profile'){profileView=null;profileTab='saved'}goScreen(b.dataset.screen)});$('logoutBtn').onclick=async()=>{try{localStorage.removeItem('wibu_guest_mode')}catch(e){}await sb.auth.signOut();location.replace('login.html')};document.querySelectorAll('[data-profile-tab]').forEach(b=>b.onclick=()=>{profileTab=b.dataset.profileTab;renderProfile()});$('searchInput').oninput=renderFeed;
 $('plusUpload').onclick=()=>{$('plusMenu').classList.add('hidden');$('quickPhotoInput').value='';$('quickPhotoInput').click()};$('plusCollection').onclick=openCollection;$('plusCollage').onclick=makeCollage;$('pinPublish').onclick=publishPin;$('pinEditorClose').onclick=closePinEditor;$('pinEditorCancel').onclick=closePinEditor;
 $('pinTags').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();toast('Pisahkan tag dengan koma.')}});$('collageInput').onchange=handleCollage;$('saveCollection').onclick=saveCollection;
 $('detailBack').onclick=()=>{$('detailView').classList.add('hidden');document.body.style.overflow=''};$('detailOwner').onclick=()=>openMemberProfile(current.user_id);$('likeBtn').onclick=toggleLike;$('saveBtn').onclick=()=>toggleSaved(current.id);$('commentOpen').onclick=openComments;$('shareBtn').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{if(navigator.share)await navigator.share({title:current.title,url:link});else{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}}catch(e){}};$('detailMore').onclick=()=>{$('moreSheet').classList.remove('hidden')};$('downloadImage').onclick=downloadCurrent;$('copyLink').onclick=async()=>{const link=location.href.split('#')[0]+'#photo='+current.id;try{await navigator.clipboard.writeText(link);toast('Tautan disalin.')}catch(e){toast(link)}closeOverlay('moreSheet')};$('moreFollow').onclick=()=>openMemberProfile(current.user_id);$('addToCollection').onclick=()=>{closeOverlay('moreSheet');openCollection()};$('reportPhoto').onclick=async()=>{if(!user){toast('Masuk dulu untuk melaporkan foto.');return openAuth()}const reason=prompt('Alasan laporan foto ini:');if(!reason?.trim())return;const r=await sb.from('reports').insert({wallpaper_id:current.id,user_id:user.id,reason:reason.trim().slice(0,300)});if(r.error)return toast(r.error.message);toast('Laporan berhasil dikirim.');closeOverlay('moreSheet')};$('deletePhoto').onclick=deleteCurrent;
