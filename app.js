@@ -169,24 +169,44 @@ async function toggleLike(){if(!user){toast('Masuk dulu untuk menyukai foto.');r
 async function downloadCurrent(){if(!current)return;try{const response=await fetch(url(current));if(!response.ok)throw new Error('Gagal mengambil gambar');const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),a=document.createElement('a');a.href=objectUrl;a.download=(current.title||'waifu-gallery').replace(/[^a-z0-9-_]/gi,'-')+'.'+(blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg');document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(objectUrl);toast('Gambar diunduh ke perangkat.')}catch(e){window.open(url(current),'_blank');toast('Gambar dibuka. Gunakan menu browser untuk mengunduh.')}}
 async function fileToBase64(file){const bytes=new Uint8Array(await file.arrayBuffer());let binary='';const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));return btoa(binary)}
 async function analyzePhotoForSearch(file){const image_base64=await fileToBase64(file);const {data,error}=await sb.functions.invoke('analyze-image-',{body:{image_base64,mime_type:file.type}});if(error)throw error;if(!data||!Array.isArray(data.visual_tags))throw new Error('Respons AI tidak valid.');return {visual_tags:[...new Set(data.visual_tags.map(x=>String(x).trim().toLowerCase()).filter(Boolean))].slice(0,24),visual_description:String(data.visual_description||'').slice(0,700)}}
+async function readFunctionError(error){
+ let detail=error?.message||String(error||'Kesalahan tidak diketahui');
+ try{
+  const response=error?.context;
+  if(response && typeof response.clone==='function'){
+   const body=await response.clone().json();
+   if(body?.error)detail=String(body.error);
+   else if(body?.message)detail=String(body.message);
+  }
+ }catch(_){ }
+ return detail;
+}
 async function analyzeExistingPhotos(){
  if(!isOwner())return toast('Hanya Owner yang bisa menjalankan indeks foto.');
  const pending=items.filter(w=>!Array.isArray(w.visual_tags)||!w.visual_tags.length);
  if(!pending.length)return toast('Semua foto sudah dianalisis AI.');
  if(!confirm(`AI akan menganalisis ${pending.length} foto lama agar bisa ditemukan berdasarkan isi gambar. Proses ini memakai kuota API. Lanjutkan?`))return;
  const button=$('ownerAnalyzePhotos');if(button){button.disabled=true;button.textContent='Menganalisis 0/'+pending.length}
- let done=0,failed=0;
+ let done=0,failed=0;const failures=[];
  try{
   for(const photo of pending){
    try{
+    if(!photo.storage_path)throw new Error('Foto ini tidak memiliki storage_path di tabel wallpapers.');
     const {data,error}=await sb.functions.invoke('analyze-image-',{body:{wallpaper_id:photo.id,storage_path:photo.storage_path}});
-    if(error)throw error;if(!data?.visual_tags)throw new Error('Respons AI kosong.');
+    if(error)throw new Error(await readFunctionError(error));
+    if(!data?.visual_tags)throw new Error(data?.error||'Respons AI kosong atau tidak berisi visual_tags.');
     photo.visual_tags=data.visual_tags;photo.visual_description=data.visual_description||'';
-   }catch(e){failed++;console.warn('AI indexing failed for',photo.id,e)}
+   }catch(e){
+    failed++;const message=e?.message||String(e);failures.push(`${photo.title||photo.id}: ${message}`);
+    console.error('AI indexing failed:',{id:photo.id,title:photo.title,storage_path:photo.storage_path,error:e});
+   }
    done++;if(button)button.textContent=`Menganalisis ${done}/${pending.length}`;
   }
   await loadGallery();
-  toast(failed?`${done-failed} foto dianalisis, ${failed} gagal.`:`Berhasil menganalisis ${done} foto lama.`);
+  if(failed){
+   const details=failures.slice(0,3).join('\n\n');
+   alert(`${done-failed} foto berhasil, ${failed} gagal.\n\nPenyebab yang terdeteksi:\n${details}${failures.length>3?'\n\nDan '+(failures.length-3)+' kegagalan lainnya.':''}`);
+  }else toast(`Berhasil menganalisis ${done} foto lama.`);
  }finally{if(button){button.disabled=false;button.textContent='Kenali foto lama dengan AI'}}
 }
 async function uploadFile(f,metadata={}){

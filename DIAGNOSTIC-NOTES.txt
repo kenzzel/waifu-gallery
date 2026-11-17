@@ -1,0 +1,17 @@
+WAIFU GALLERY - AI INDEXING DIAGNOSTIC PATCH
+
+This patch changes only app.js. It does not change SQL, photos, storage, or Supabase secrets.
+It keeps the Edge Function slug as analyze-image- (with the final hyphen), matching the Supabase Test screen shown by the user.
+
+What changed:
+- Reads the response body returned by Supabase Edge Function errors.
+- Shows the first three real error messages after an indexing run, rather than only saying every photo failed.
+- Reports missing storage_path separately.
+
+Install:
+1. Replace app.js in the GitHub repository with this app.js.
+2. Keep config.js unchanged.
+3. Commit and wait for GitHub Pages deployment.
+4. Reload Waifu Gallery, sign in as Owner, run indexing ONCE, and send the alert screenshot.
+
+No SQL is included. No API keys are added.
