@@ -69,3 +69,7 @@ Jika nama/bio sempat berubah tetapi kembali ke email setelah refresh, jalankan S
 ## Simpan profil (SQL dikirim terpisah di chat)
 
 Versi ini menyimpan nama, bio, dan avatar melalui RPC `update_my_profile`. Jalankan SQL migrasi yang dikirim terpisah di chat pada Supabase SQL Editor sebelum memakai tombol Simpan profil. Fungsi RPC mengambil identitas dari `auth.uid()` sehingga pengguna hanya dapat mengubah profil akunnya sendiri.
+
+
+## Fitur sosial profil
+Profil member menampilkan jumlah Mengikuti, Pengikut, dan Like yang diterima pada foto-fotonya. Tombol Ikuti berubah menjadi Mengikuti; jika kedua member saling mengikuti, statusnya menjadi Teman. Jalankan SQL `user_follows` yang diberikan terpisah di chat sebelum memakai fitur ini.
