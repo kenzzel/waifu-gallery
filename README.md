@@ -83,3 +83,8 @@ Pencarian dapat menemukan karakter dari gambar walau nama karakter tidak ditulis
 3. Di Edge Functions → Secrets, tambahkan `GEMINI_API_KEY` berisi API key Gemini. Opsional: tambahkan `GEMINI_MODEL` dengan nilai `gemini-2.5-flash`. Jangan masukkan key ke GitHub atau `config.js`.
 4. Setelah function aktif, upload baru otomatis dianalisis. Owner dapat menekan **Kenali foto lama dengan AI** di Owner Dashboard untuk mengindeks foto-foto yang sudah terupload. Proses indeks foto lama memakai kuota API dan dilakukan satu per satu.
 5. Pencarian memeriksa judul, caption, tag manual, dan tag visual hasil AI. Hasil AI bisa keliru; periksa kembali nama karakter jika penting.
+
+
+### AI visual indexing function name
+
+The frontend invokes the deployed Supabase Edge Function using the exact slug `analyze-image-` (with a trailing hyphen), matching the function name shown in the Supabase dashboard screenshot. If your deployed function slug is instead `analyze-image` without the trailing hyphen, change both `sb.functions.invoke` calls in `app.js` to that exact slug.

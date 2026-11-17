@@ -168,7 +168,7 @@ async function toggleSaved(id){if(!user){toast('Masuk dulu untuk menyimpan foto 
 async function toggleLike(){if(!user){toast('Masuk dulu untuk menyukai foto.');return openAuth()}const id=current.id;if(liked.has(id)){const r=await sb.from('likes').delete().eq('user_id',user.id).eq('wallpaper_id',id);if(r.error)return toast(r.error.message);liked.delete(id)}else{const r=await sb.from('likes').insert({user_id:user.id,wallpaper_id:id});if(r.error)return toast(r.error.message);liked.add(id)}refreshDetail();renderProfile()}
 async function downloadCurrent(){if(!current)return;try{const response=await fetch(url(current));if(!response.ok)throw new Error('Gagal mengambil gambar');const blob=await response.blob(),objectUrl=URL.createObjectURL(blob),a=document.createElement('a');a.href=objectUrl;a.download=(current.title||'waifu-gallery').replace(/[^a-z0-9-_]/gi,'-')+'.'+(blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg');document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(objectUrl);toast('Gambar diunduh ke perangkat.')}catch(e){window.open(url(current),'_blank');toast('Gambar dibuka. Gunakan menu browser untuk mengunduh.')}}
 async function fileToBase64(file){const bytes=new Uint8Array(await file.arrayBuffer());let binary='';const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+chunk,bytes.length)));return btoa(binary)}
-async function analyzePhotoForSearch(file){const image_base64=await fileToBase64(file);const {data,error}=await sb.functions.invoke('analyze-image',{body:{image_base64,mime_type:file.type}});if(error)throw error;if(!data||!Array.isArray(data.visual_tags))throw new Error('Respons AI tidak valid.');return {visual_tags:[...new Set(data.visual_tags.map(x=>String(x).trim().toLowerCase()).filter(Boolean))].slice(0,24),visual_description:String(data.visual_description||'').slice(0,700)}}
+async function analyzePhotoForSearch(file){const image_base64=await fileToBase64(file);const {data,error}=await sb.functions.invoke('analyze-image-',{body:{image_base64,mime_type:file.type}});if(error)throw error;if(!data||!Array.isArray(data.visual_tags))throw new Error('Respons AI tidak valid.');return {visual_tags:[...new Set(data.visual_tags.map(x=>String(x).trim().toLowerCase()).filter(Boolean))].slice(0,24),visual_description:String(data.visual_description||'').slice(0,700)}}
 async function analyzeExistingPhotos(){
  if(!isOwner())return toast('Hanya Owner yang bisa menjalankan indeks foto.');
  const pending=items.filter(w=>!Array.isArray(w.visual_tags)||!w.visual_tags.length);
@@ -179,7 +179,7 @@ async function analyzeExistingPhotos(){
  try{
   for(const photo of pending){
    try{
-    const {data,error}=await sb.functions.invoke('analyze-image',{body:{wallpaper_id:photo.id,storage_path:photo.storage_path}});
+    const {data,error}=await sb.functions.invoke('analyze-image-',{body:{wallpaper_id:photo.id,storage_path:photo.storage_path}});
     if(error)throw error;if(!data?.visual_tags)throw new Error('Respons AI kosong.');
     photo.visual_tags=data.visual_tags;photo.visual_description=data.visual_description||'';
    }catch(e){failed++;console.warn('AI indexing failed for',photo.id,e)}
