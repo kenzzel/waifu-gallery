@@ -73,3 +73,13 @@ Versi ini menyimpan nama, bio, dan avatar melalui RPC `update_my_profile`. Jalan
 
 ## Fitur sosial profil
 Profil member menampilkan jumlah Mengikuti, Pengikut, dan Like yang diterima pada foto-fotonya. Tombol Ikuti berubah menjadi Mengikuti; jika kedua member saling mengikuti, statusnya menjadi Teman. Jalankan SQL `user_follows` yang diberikan terpisah di chat sebelum memakai fitur ini.
+
+
+## Pencarian berdasarkan isi gambar dengan AI
+Pencarian dapat menemukan karakter dari gambar walau nama karakter tidak ditulis pada judul. Foto baru dianalisis saat upload menggunakan Gemini Vision melalui Supabase Edge Function. API key Gemini hanya disimpan sebagai Secret di Supabase, bukan di `config.js` atau frontend.
+
+1. Jalankan SQL migrasi `visual_tags` yang diberikan terpisah di chat.
+2. Di Supabase Dashboard buka Edge Functions, buat function bernama `analyze-image`, lalu isi dengan kode `supabase/functions/analyze-image/index.ts` dari ZIP ini dan deploy.
+3. Di Edge Functions → Secrets, tambahkan `GEMINI_API_KEY` berisi API key Gemini. Opsional: tambahkan `GEMINI_MODEL` dengan nilai `gemini-2.5-flash`. Jangan masukkan key ke GitHub atau `config.js`.
+4. Setelah function aktif, upload baru otomatis dianalisis. Owner dapat menekan **Kenali foto lama dengan AI** di Owner Dashboard untuk mengindeks foto-foto yang sudah terupload. Proses indeks foto lama memakai kuota API dan dilakukan satu per satu.
+5. Pencarian memeriksa judul, caption, tag manual, dan tag visual hasil AI. Hasil AI bisa keliru; periksa kembali nama karakter jika penting.
